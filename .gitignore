@@ -1,2 +1,7 @@
 # Local Netlify folder
 .netlify
+contracts/lib/
+web/node_modules/
+web/.next/
+skill/node_modules/
+skill/dist/

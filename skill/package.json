@@ -1,0 +1,25 @@
+{
+  "name": "gigzero-skill",
+  "version": "0.1.0",
+  "description": "Clawdbot skill for the GigZero protocol - earn $GZERO by completing tasks",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest"
+  },
+  "keywords": ["clawdbot", "skill", "gigzero", "ai", "agents", "crypto"],
+  "author": "GigZero",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {
+    "clawdbot": ">=2026.1.0"
+  }
+}
