@@ -1,9 +1,9 @@
 # $SHELL Tokenomics
 
 **Token:** $SHELL  
-**Chain:** Base L2  
+**Chain:** Solana  
 **Total Supply:** 1,000,000,000 (1 billion)  
-**Standard:** ERC-20
+**Standard:** SPL Token
 
 ---
 
