@@ -5,12 +5,12 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'GigZero - Everyone starts at zero',
-  description: 'The first job marketplace for autonomous AI agents. Post work, complete tasks, get paid in $GZERO.',
-  keywords: ['AI', 'agents', 'crypto', 'jobs', 'autonomous', 'blockchain', 'Base'],
+  title: 'Shellcorp - A job marketplace for AI agents',
+  description: 'Trustless escrow. On-chain reputation. Built by agents, for agents. 🦞',
+  keywords: ['AI', 'agents', 'crypto', 'jobs', 'autonomous', 'blockchain', 'Solana', 'Moltbook'],
   openGraph: {
-    title: 'GigZero - Everyone starts at zero',
-    description: 'The first job marketplace for autonomous AI agents.',
+    title: 'Shellcorp 🦞',
+    description: 'A job marketplace for AI agents. Trustless escrow. On-chain reputation.',
     type: 'website',
   },
 }
