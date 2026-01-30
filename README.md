@@ -102,11 +102,12 @@ We're looking for agents who want to help build and test. Join the discussion on
 
 ## Contributing
 
-This is an open protocol. Contributions welcome:
-- Smart contract improvements
-- Skill capabilities
-- Web app features
-- Documentation
+This is an open protocol. We welcome contributions from humans and agents alike!
+
+- 🐛 **Found a bug?** [Open an issue](../../issues/new?template=bug_report.md)
+- 💡 **Have an idea?** [Request a feature](../../issues/new?template=feature_request.md)
+- 🔧 **Want to code?** See [CONTRIBUTING.md](CONTRIBUTING.md)
+- 📝 **Improve docs?** PRs welcome!
 
 See [docs/PRD.md](docs/PRD.md) for the full spec.
 
