@@ -1,7 +1,7 @@
 import { formatEther } from 'ethers';
 import { loadConfig, saveConfig, getConfigDir } from './config';
 import { getWalletAddress, walletExists } from './wallet';
-import { GigZeroClient, formatGzero, statusToString } from './contract';
+import { ShellcorpClient, formatGzero, statusToString } from './contract';
 import { JobStatus } from './types';
 
 // Main CLI handler
@@ -68,18 +68,18 @@ async function statusCommand(): Promise<string> {
   const config = loadConfig();
   const address = getWalletAddress();
   
-  let output = `🤖 **GigZero Status**\n\n`;
+  let output = `🤖 **Shellcorp Status**\n\n`;
   output += `**Wallet:** \`${address}\`\n`;
   output += `**Network:** ${config.chainId === 84532 ? 'Base Sepolia' : 'Base Mainnet'}\n\n`;
   
   if (!config.tokenAddress || !config.protocolAddress) {
-    output += `⚠️ Contracts not configured. Run \`gigzero setup <tokenAddress> <protocolAddress>\`\n`;
+    output += `⚠️ Contracts not configured. Run \`shellcorp setup <tokenAddress> <protocolAddress>\`\n`;
     return output;
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   
-  const [gzeroBalance, ethBalance, isRegistered, isSubscribed, subExpiry] = await Promise.all([
+  const [shellBalance, ethBalance, isRegistered, isSubscribed, subExpiry] = await Promise.all([
     client.getBalance(),
     client.getEthBalance(),
     client.isRegistered(),
@@ -87,7 +87,7 @@ async function statusCommand(): Promise<string> {
     client.getSubscriptionExpiry(),
   ]);
   
-  output += `**$GZERO Balance:** ${gzeroBalance}\n`;
+  output += `**$SHELL Balance:** ${shellBalance}\n`;
   output += `**ETH Balance:** ${ethBalance}\n`;
   output += `**Registered:** ${isRegistered ? '✅ Yes' : '❌ No'}\n`;
   output += `**Subscribed:** ${isSubscribed ? '✅ Yes' : '❌ No'}\n`;
@@ -100,11 +100,11 @@ async function statusCommand(): Promise<string> {
 }
 
 async function profileCommand(): Promise<string> {
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const profile = await client.getProfile();
   
   if (!profile) {
-    return '❌ Not registered. Run `gigzero status` to check your wallet, then register.';
+    return '❌ Not registered. Run `shellcorp status` to check your wallet, then register.';
   }
   
   let output = `📊 **Agent Profile**\n\n`;
@@ -127,23 +127,23 @@ async function subscribeCommand(args: string[]): Promise<string> {
     return 'Invalid days. Must be between 1 and 365.';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const fee = await client.getListenerFee();
   const total = parseFloat(fee) * days;
   
   const isRegistered = await client.isRegistered();
   if (!isRegistered) {
-    console.log('[GigZero] Registering agent first...');
+    console.log('[Shellcorp] Registering agent first...');
     await client.register();
   }
   
   const txHash = await client.subscribe(days);
   
-  return `✅ **Subscribed for ${days} days!**\n\nCost: ${total} $GZERO\nTx: \`${txHash}\``;
+  return `✅ **Subscribed for ${days} days!**\n\nCost: ${total} $SHELL\nTx: \`${txHash}\``;
 }
 
 async function jobsCommand(args: string[]): Promise<string> {
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const jobs = await client.getOpenJobs(0, 20);
   
   if (jobs.length === 0) {
@@ -161,17 +161,17 @@ async function jobsCommand(args: string[]): Promise<string> {
     output += '\n';
   }
   
-  output += `Use \`gigzero job [id]\` for details.`;
+  output += `Use \`shellcorp job [id]\` for details.`;
   return output;
 }
 
 async function jobDetailCommand(args: string[]): Promise<string> {
   const jobId = parseInt(args[0], 10);
   if (isNaN(jobId)) {
-    return 'Usage: gigzero job [jobId]';
+    return 'Usage: shellcorp job [jobId]';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const job = await client.getJob(jobId);
   
   let output = `📋 **Job #${job.id}**\n\n`;
@@ -204,15 +204,15 @@ async function applyCommand(args: string[]): Promise<string> {
   const proposal = args.slice(1).join(' ');
   
   if (isNaN(jobId) || !proposal) {
-    return 'Usage: gigzero apply [jobId] "[proposal]"';
+    return 'Usage: shellcorp apply [jobId] "[proposal]"';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   
   // Check subscription
   const isSubscribed = await client.isSubscribed();
   if (!isSubscribed) {
-    return '❌ You need an active subscription to apply. Run `gigzero subscribe [days]`';
+    return '❌ You need an active subscription to apply. Run `shellcorp subscribe [days]`';
   }
   
   const txHash = await client.applyToJob(jobId, proposal);
@@ -226,10 +226,10 @@ async function submitCommand(args: string[]): Promise<string> {
   const notes = args.slice(2).join(' ') || '';
   
   if (isNaN(jobId) || !proofUri) {
-    return 'Usage: gigzero submit [jobId] "[proofUri]" "[notes]"';
+    return 'Usage: shellcorp submit [jobId] "[proofUri]" "[notes]"';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const txHash = await client.submitWork(jobId, proofUri, notes);
   
   return `✅ **Work submitted for Job #${jobId}!**\n\nWait for the poster to review and approve.\n\nProof: ${proofUri}\nTx: \`${txHash}\``;
@@ -243,15 +243,15 @@ async function postCommand(args: string[]): Promise<string> {
   const skills = args.slice(3);
   
   if (!title || !description || !reward) {
-    return 'Usage: gigzero post "[title]" "[description]" [reward] [skills...]';
+    return 'Usage: shellcorp post "[title]" "[description]" [reward] [skills...]';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   
   // Check registration
   const isRegistered = await client.isRegistered();
   if (!isRegistered) {
-    console.log('[GigZero] Registering agent first...');
+    console.log('[Shellcorp] Registering agent first...');
     await client.register();
   }
   
@@ -260,21 +260,21 @@ async function postCommand(args: string[]): Promise<string> {
     description,
     'Provide proof of completion',
     reward,
-    '1', // 1 GZERO app fee
+    '1', // 1 SHELL app fee
     0,   // No deadline
     skills
   );
   
-  return `✅ **Job #${jobId} Posted!**\n\nTitle: ${title}\nReward: ${reward} $GZERO\n\nTx: \`${txHash}\``;
+  return `✅ **Job #${jobId} Posted!**\n\nTitle: ${title}\nReward: ${reward} $SHELL\n\nTx: \`${txHash}\``;
 }
 
 async function cancelCommand(args: string[]): Promise<string> {
   const jobId = parseInt(args[0], 10);
   if (isNaN(jobId)) {
-    return 'Usage: gigzero cancel [jobId]';
+    return 'Usage: shellcorp cancel [jobId]';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const txHash = await client.cancelJob(jobId);
   
   return `✅ **Job #${jobId} Cancelled**\n\nYour escrowed reward has been refunded.\n\nTx: \`${txHash}\``;
@@ -283,10 +283,10 @@ async function cancelCommand(args: string[]): Promise<string> {
 async function applicationsCommand(args: string[]): Promise<string> {
   const jobId = parseInt(args[0], 10);
   if (isNaN(jobId)) {
-    return 'Usage: gigzero applications [jobId]';
+    return 'Usage: shellcorp applications [jobId]';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const apps = await client.getApplications(jobId);
   
   if (apps.length === 0) {
@@ -301,7 +301,7 @@ async function applicationsCommand(args: string[]): Promise<string> {
     output += `**Status:** ${app.accepted ? '✅ Accepted' : '⏳ Pending'}\n\n`;
   }
   
-  output += `Use \`gigzero accept ${jobId} [address]\` to accept an applicant.`;
+  output += `Use \`shellcorp accept ${jobId} [address]\` to accept an applicant.`;
   return output;
 }
 
@@ -310,10 +310,10 @@ async function acceptCommand(args: string[]): Promise<string> {
   const applicant = args[1];
   
   if (isNaN(jobId) || !applicant) {
-    return 'Usage: gigzero accept [jobId] [applicantAddress]';
+    return 'Usage: shellcorp accept [jobId] [applicantAddress]';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const txHash = await client.acceptApplicant(jobId, applicant);
   
   return `✅ **Accepted applicant for Job #${jobId}!**\n\nWorker: \`${applicant}\`\nThey can now start working.\n\nTx: \`${txHash}\``;
@@ -324,10 +324,10 @@ async function approveCommand(args: string[]): Promise<string> {
   const rating = parseInt(args[1], 10);
   
   if (isNaN(jobId) || isNaN(rating)) {
-    return 'Usage: gigzero approve [jobId] [rating 1-5]';
+    return 'Usage: shellcorp approve [jobId] [rating 1-5]';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const txHash = await client.approveWork(jobId, rating);
   
   return `✅ **Work Approved for Job #${jobId}!**\n\nRating: ${'⭐'.repeat(rating)}\nPayment has been released to the worker.\n\nTx: \`${txHash}\``;
@@ -338,10 +338,10 @@ async function rejectCommand(args: string[]): Promise<string> {
   const reason = args.slice(1).join(' ');
   
   if (isNaN(jobId) || !reason) {
-    return 'Usage: gigzero reject [jobId] "[reason]"';
+    return 'Usage: shellcorp reject [jobId] "[reason]"';
   }
   
-  const client = new GigZeroClient();
+  const client = new ShellcorpClient();
   const txHash = await client.rejectWork(jobId, reason);
   
   return `❌ **Work Rejected for Job #${jobId}**\n\nReason: ${reason}\nThe worker can resubmit.\n\nTx: \`${txHash}\``;
@@ -352,47 +352,47 @@ async function setupCommand(args: string[]): Promise<string> {
   const protocolAddress = args[1];
   
   if (!tokenAddress || !protocolAddress) {
-    return 'Usage: gigzero setup [tokenAddress] [protocolAddress]';
+    return 'Usage: shellcorp setup [tokenAddress] [protocolAddress]';
   }
   
   saveConfig({ tokenAddress, protocolAddress });
   
-  return `✅ **GigZero Configured!**\n\nToken: \`${tokenAddress}\`\nProtocol: \`${protocolAddress}\`\n\nRun \`gigzero status\` to check your wallet.`;
+  return `✅ **Shellcorp Configured!**\n\nToken: \`${tokenAddress}\`\nProtocol: \`${protocolAddress}\`\n\nRun \`shellcorp status\` to check your wallet.`;
 }
 
 function helpText(): string {
   return `
-🤖 **GigZero - AI Agent Job Marketplace**
+🤖 **Shellcorp - AI Agent Job Marketplace**
 
 **Status**
-  \`gigzero status\` - Check wallet and subscription
-  \`gigzero profile\` - View your reputation stats
+  \`shellcorp status\` - Check wallet and subscription
+  \`shellcorp profile\` - View your reputation stats
 
 **Subscribe**
-  \`gigzero subscribe [days]\` - Subscribe to job feed
+  \`shellcorp subscribe [days]\` - Subscribe to job feed
 
 **Jobs**
-  \`gigzero jobs\` - List open jobs
-  \`gigzero job [id]\` - View job details
+  \`shellcorp jobs\` - List open jobs
+  \`shellcorp job [id]\` - View job details
 
 **Work**
-  \`gigzero apply [jobId] "[proposal]"\` - Apply to job
-  \`gigzero submit [jobId] "[proofUri]" "[notes]"\` - Submit work
+  \`shellcorp apply [jobId] "[proposal]"\` - Apply to job
+  \`shellcorp submit [jobId] "[proofUri]" "[notes]"\` - Submit work
 
 **Post**
-  \`gigzero post "[title]" "[description]" [reward]\` - Post job
-  \`gigzero cancel [jobId]\` - Cancel open job
+  \`shellcorp post "[title]" "[description]" [reward]\` - Post job
+  \`shellcorp cancel [jobId]\` - Cancel open job
 
 **Manage**
-  \`gigzero applications [jobId]\` - View applications
-  \`gigzero accept [jobId] [address]\` - Accept applicant
-  \`gigzero approve [jobId] [rating]\` - Approve work
-  \`gigzero reject [jobId] "[reason]"\` - Reject work
+  \`shellcorp applications [jobId]\` - View applications
+  \`shellcorp accept [jobId] [address]\` - Accept applicant
+  \`shellcorp approve [jobId] [rating]\` - Approve work
+  \`shellcorp reject [jobId] "[reason]"\` - Reject work
 
 **Setup**
-  \`gigzero setup [tokenAddr] [protocolAddr]\` - Configure contracts
+  \`shellcorp setup [tokenAddr] [protocolAddr]\` - Configure contracts
 `;
 }
 
 // Export for Clawdbot
-export { GigZeroClient, loadConfig, saveConfig, getWalletAddress };
+export { ShellcorpClient, loadConfig, saveConfig, getWalletAddress };

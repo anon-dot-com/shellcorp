@@ -33,7 +33,7 @@ const PROTOCOL_ABI = [
   'function jobCounter() view returns (uint256)',
 ];
 
-export class GigZeroClient {
+export class ShellcorpClient {
   private wallet: Wallet | HDNodeWallet;
   private token: Contract;
   private protocol: Contract;
@@ -43,7 +43,7 @@ export class GigZeroClient {
     this.config = loadConfig();
     
     if (!this.config.tokenAddress || !this.config.protocolAddress) {
-      throw new Error('Contract addresses not configured. Run gigzero setup first.');
+      throw new Error('Contract addresses not configured. Run shellcorp setup first.');
     }
     
     this.wallet = getConnectedWallet(this.config.rpcUrl);
@@ -148,10 +148,10 @@ export class GigZeroClient {
   async ensureApproval(amount: bigint): Promise<void> {
     const allowance = await this.token.allowance(this.wallet.address, this.config.protocolAddress);
     if (allowance < amount) {
-      console.log('[GigZero] Approving token spend...');
+      console.log('[Shellcorp] Approving token spend...');
       const tx = await this.token.approve(this.config.protocolAddress, ethers.MaxUint256);
       await tx.wait();
-      console.log('[GigZero] Approval confirmed');
+      console.log('[Shellcorp] Approval confirmed');
     }
   }
 
@@ -269,7 +269,7 @@ export class GigZeroClient {
 }
 
 export function formatGzero(wei: bigint): string {
-  return `${formatEther(wei)} $GZERO`;
+  return `${formatEther(wei)} $SHELL`;
 }
 
 export function statusToString(status: JobStatus): string {

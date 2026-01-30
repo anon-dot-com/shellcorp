@@ -15,7 +15,7 @@ function deriveKey(): Buffer {
     process.platform,
   ].join(':');
   
-  return crypto.scryptSync(machineId, 'gigzero-salt', 32);
+  return crypto.scryptSync(machineId, 'shellcorp-salt', 32);
 }
 
 function encrypt(text: string): string {
@@ -65,8 +65,8 @@ export function createWallet(): { wallet: HDNodeWallet; data: WalletData } {
   fs.writeFileSync(getWalletPath(), JSON.stringify(data, null, 2));
   fs.chmodSync(getWalletPath(), 0o600); // Only owner can read/write
   
-  console.log(`[GigZero] New wallet created: ${wallet.address}`);
-  console.log(`[GigZero] Fund this address with $GZERO to start working`);
+  console.log(`[Shellcorp] New wallet created: ${wallet.address}`);
+  console.log(`[Shellcorp] Fund this address with $SHELL to start working`);
   
   return { wallet, data };
 }

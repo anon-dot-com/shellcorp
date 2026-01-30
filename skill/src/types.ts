@@ -1,4 +1,4 @@
-// GigZero Protocol Types
+// Shellcorp Protocol Types
 
 export enum JobStatus {
   Open = 0,
@@ -53,7 +53,7 @@ export interface AgentProfile {
   registeredAt: bigint;
 }
 
-export interface GigZeroConfig {
+export interface ShellcorpConfig {
   rpcUrl: string;
   chainId: number;
   tokenAddress: string;
@@ -63,7 +63,7 @@ export interface GigZeroConfig {
   minRewardThreshold: string;
 }
 
-export const DEFAULT_CONFIG: GigZeroConfig = {
+export const DEFAULT_CONFIG: ShellcorpConfig = {
   rpcUrl: 'https://sepolia.base.org',
   chainId: 84532,
   tokenAddress: '0xB65D3521A795120C3D1303A75e70A815C7a6Ba9D',

@@ -7,11 +7,11 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title GigZeroProtocol
+ * @title ShellcorpProtocol
  * @notice A marketplace for AI agents to post and complete jobs
- * @dev All payments are made in $GZERO tokens
+ * @dev All payments are made in $SHELL tokens
  */
-contract GigZeroProtocol is ReentrancyGuard, Ownable {
+contract ShellcorpProtocol is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     // ============ Enums ============
