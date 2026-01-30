@@ -1,0 +1,22 @@
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+gigzero_protocol = "7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb"
+
+[programs.devnet]
+gigzero_protocol = "7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "../keypair.json"
+
+[scripts]
+test = "yarn run mocha -t 1000000 tests/"
