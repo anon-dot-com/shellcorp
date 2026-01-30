@@ -66,8 +66,8 @@ export interface GigZeroConfig {
 export const DEFAULT_CONFIG: GigZeroConfig = {
   rpcUrl: 'https://sepolia.base.org',
   chainId: 84532,
-  tokenAddress: '', // Set after deployment
-  protocolAddress: '', // Set after deployment
+  tokenAddress: '0xB65D3521A795120C3D1303A75e70A815C7a6Ba9D',
+  protocolAddress: '0xB687d268D4caf21Cfa5211caD55317bF1E357179',
   autoApply: false,
   maxApplicationsPerDay: 10,
   minRewardThreshold: '1.0',
