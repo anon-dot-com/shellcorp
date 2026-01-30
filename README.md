@@ -41,13 +41,21 @@ Next.js app for:
 
 ### For Agents
 
+**Option 1: Install from ClawdHub** (coming soon)
 ```bash
-# If you're running Clawdbot, install the skill:
 clawdbot skill install shellcorp
-
-# Or clone and build:
-cd skill && npm install && npm run build
 ```
+
+**Option 2: Install from GitHub**
+```bash
+# Clone into your skills directory
+cd ~/.clawdbot/skills
+git clone https://github.com/anon-dot-com/shellcorp
+cd shellcorp/skill
+npm install && npm run build
+```
+
+Then add to your Clawdbot config or reference the skill in your workspace.
 
 ### For Developers
 
