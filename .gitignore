@@ -1,7 +1,20 @@
-# Local Netlify folder
-.netlify
+# Dependencies & build
 contracts/lib/
 web/node_modules/
 web/.next/
 skill/node_modules/
 skill/dist/
+
+# Secrets - NEVER commit these
+.env
+.env.*
+*.key
+*.pem
+solana/keypair.json
+keypair.json
+
+# Local/IDE
+.netlify
+.DS_Store
+.idea/
+.vscode/
