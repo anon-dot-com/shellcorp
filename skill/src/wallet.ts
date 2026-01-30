@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { ethers, Wallet, HDNodeWallet } from 'ethers';
-import { getConfigDir, ensureConfigDir } from './config';
+import { Keypair, Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import bs58 from 'bs58';
+import { getConfigDir, ensureConfigDir, loadConfig } from './config';
 
 const WALLET_FILE = 'wallet.enc';
 
@@ -38,8 +39,8 @@ function decrypt(text: string): string {
 }
 
 export interface WalletData {
-  address: string;
-  encryptedKey: string;
+  publicKey: string;
+  encryptedSecretKey: string;
   createdAt: string;
 }
 
@@ -51,52 +52,64 @@ export function walletExists(): boolean {
   return fs.existsSync(getWalletPath());
 }
 
-export function createWallet(): { wallet: HDNodeWallet; data: WalletData } {
+export function createWallet(): { keypair: Keypair; data: WalletData } {
   ensureConfigDir();
   
-  const wallet = ethers.Wallet.createRandom();
+  const keypair = Keypair.generate();
+  const secretKeyBase58 = bs58.encode(keypair.secretKey);
   
   const data: WalletData = {
-    address: wallet.address,
-    encryptedKey: encrypt(wallet.privateKey),
+    publicKey: keypair.publicKey.toBase58(),
+    encryptedSecretKey: encrypt(secretKeyBase58),
     createdAt: new Date().toISOString(),
   };
   
   fs.writeFileSync(getWalletPath(), JSON.stringify(data, null, 2));
   fs.chmodSync(getWalletPath(), 0o600); // Only owner can read/write
   
-  console.log(`[Shellcorp] New wallet created: ${wallet.address}`);
-  console.log(`[Shellcorp] Fund this address with $SHELL to start working`);
+  console.log(`[Shellcorp] New wallet created: ${keypair.publicKey.toBase58()}`);
+  console.log(`[Shellcorp] Fund this address with SOL and $SHELL to start working`);
   
-  return { wallet, data };
+  return { keypair, data };
 }
 
-export function loadWallet(): Wallet | HDNodeWallet {
+export function loadWallet(): Keypair {
   if (!walletExists()) {
-    const { wallet } = createWallet();
-    return wallet;
+    const { keypair } = createWallet();
+    return keypair;
   }
   
   const content = fs.readFileSync(getWalletPath(), 'utf-8');
   const data: WalletData = JSON.parse(content);
-  const privateKey = decrypt(data.encryptedKey);
+  const secretKeyBase58 = decrypt(data.encryptedSecretKey);
+  const secretKey = bs58.decode(secretKeyBase58);
   
-  return new ethers.Wallet(privateKey);
+  return Keypair.fromSecretKey(secretKey);
 }
 
 export function getWalletAddress(): string {
   if (!walletExists()) {
     const { data } = createWallet();
-    return data.address;
+    return data.publicKey;
   }
   
   const content = fs.readFileSync(getWalletPath(), 'utf-8');
   const data: WalletData = JSON.parse(content);
-  return data.address;
+  return data.publicKey;
 }
 
-export function getConnectedWallet(rpcUrl: string): Wallet | HDNodeWallet {
-  const wallet = loadWallet();
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
-  return wallet.connect(provider);
+export function getWalletPublicKey(): PublicKey {
+  return new PublicKey(getWalletAddress());
+}
+
+export function getConnection(): Connection {
+  const config = loadConfig();
+  return new Connection(config.rpcUrl, 'confirmed');
+}
+
+export async function getSolBalance(): Promise<number> {
+  const connection = getConnection();
+  const publicKey = getWalletPublicKey();
+  const balance = await connection.getBalance(publicKey);
+  return balance / LAMPORTS_PER_SOL;
 }

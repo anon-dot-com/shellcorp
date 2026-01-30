@@ -1,278 +1,343 @@
-import { ethers, Contract, formatEther, parseEther, Wallet, HDNodeWallet } from 'ethers';
+import { 
+  Connection, 
+  PublicKey, 
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+  TransactionInstruction,
+  Transaction,
+  sendAndConfirmTransaction,
+} from '@solana/web3.js';
+import { 
+  AnchorProvider, 
+  BN,
+  Program,
+} from '@coral-xyz/anchor';
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import { loadConfig } from './config';
-import { getConnectedWallet } from './wallet';
-import { Job, Application, WorkSubmission, AgentProfile, JobStatus } from './types';
+import { loadWallet, getConnection } from './wallet';
+import { Job, JobStatus, ProtocolConfig } from './types';
 
-// ABI fragments for the functions we need
-const TOKEN_ABI = [
-  'function balanceOf(address) view returns (uint256)',
-  'function approve(address spender, uint256 amount) returns (bool)',
-  'function allowance(address owner, address spender) view returns (uint256)',
-  'function transfer(address to, uint256 amount) returns (bool)',
-];
+// Load IDL from file at runtime
+import * as fs from 'fs';
+import * as path from 'path';
 
-const PROTOCOL_ABI = [
-  'function registerAgent() external',
-  'function subscribeToJobs(uint256 periods) external',
-  'function postJob(string title, string description, string acceptanceCriteria, uint256 reward, uint256 applicationFee, uint256 deadline, string[] requiredSkills) external returns (uint256)',
-  'function applyToJob(uint256 jobId, string proposal) external',
-  'function acceptApplicant(uint256 jobId, address applicant) external',
-  'function submitWork(uint256 jobId, string proofUri, string notes) external',
-  'function approveWork(uint256 jobId, uint8 rating) external',
-  'function rejectWork(uint256 jobId, string reason) external',
-  'function cancelJob(uint256 jobId) external',
-  'function getJob(uint256 jobId) view returns (tuple(uint256 id, address poster, string title, string description, string acceptanceCriteria, uint256 reward, uint256 applicationFee, uint8 status, address assignedWorker, uint256 createdAt, uint256 deadline, string[] requiredSkills))',
-  'function getApplications(uint256 jobId) view returns (tuple(uint256 jobId, address applicant, string proposal, uint256 appliedAt, bool accepted)[])',
-  'function getWorkSubmission(uint256 jobId) view returns (tuple(uint256 jobId, address worker, string proofUri, string notes, uint256 submittedAt, bool approved))',
-  'function getAgentProfile(address agent) view returns (tuple(address wallet, uint256 jobsCompleted, uint256 jobsPosted, uint256 totalEarned, uint256 totalSpent, uint256 approvalRate, uint256 completionRate, int256 reputationScore, uint256 registeredAt))',
-  'function getOpenJobs(uint256 offset, uint256 limit) view returns (tuple(uint256 id, address poster, string title, string description, string acceptanceCriteria, uint256 reward, uint256 applicationFee, uint8 status, address assignedWorker, uint256 createdAt, uint256 deadline, string[] requiredSkills)[])',
-  'function registeredAgents(address) view returns (bool)',
-  'function listenerExpiry(address) view returns (uint256)',
-  'function isSubscribed(address agent) view returns (bool)',
-  'function listenerFee() view returns (uint256)',
-  'function jobCounter() view returns (uint256)',
-];
+function loadIDL(): any {
+  // Try to load from relative path (deployed) or from solana dir (dev)
+  const possiblePaths = [
+    path.join(__dirname, '..', '..', 'solana', 'gigzero_protocol', 'target', 'idl', 'gigzero_protocol.json'),
+    path.join(__dirname, '..', 'idl', 'gigzero_protocol.json'),
+    path.join(process.env.HOME || '', 'clawd', 'shellcorp', 'solana', 'gigzero_protocol', 'target', 'idl', 'gigzero_protocol.json'),
+  ];
+  
+  for (const idlPath of possiblePaths) {
+    if (fs.existsSync(idlPath)) {
+      return JSON.parse(fs.readFileSync(idlPath, 'utf-8'));
+    }
+  }
+  
+  throw new Error('IDL file not found');
+}
 
 export class ShellcorpClient {
-  private wallet: Wallet | HDNodeWallet;
-  private token: Contract;
-  private protocol: Contract;
+  private connection: Connection;
+  private program: Program;
   private config: ReturnType<typeof loadConfig>;
+  private programId: PublicKey;
+  private keypair: ReturnType<typeof loadWallet>;
 
   constructor() {
     this.config = loadConfig();
     
-    if (!this.config.tokenAddress || !this.config.protocolAddress) {
-      throw new Error('Contract addresses not configured. Run shellcorp setup first.');
+    if (!this.config.programId) {
+      throw new Error('Program ID not configured. Run shellcorp setup first.');
     }
     
-    this.wallet = getConnectedWallet(this.config.rpcUrl);
-    this.token = new ethers.Contract(this.config.tokenAddress, TOKEN_ABI, this.wallet);
-    this.protocol = new ethers.Contract(this.config.protocolAddress, PROTOCOL_ABI, this.wallet);
+    this.programId = new PublicKey(this.config.programId);
+    this.connection = getConnection();
+    this.keypair = loadWallet();
+    
+    // Create a minimal wallet interface for AnchorProvider
+    const wallet = {
+      publicKey: this.keypair.publicKey,
+      signTransaction: async (tx: any) => {
+        tx.partialSign(this.keypair);
+        return tx;
+      },
+      signAllTransactions: async (txs: any[]) => {
+        txs.forEach(tx => tx.partialSign(this.keypair));
+        return txs;
+      },
+    };
+    
+    const provider = new AnchorProvider(
+      this.connection,
+      wallet as any,
+      { commitment: 'confirmed' }
+    );
+    
+    const idl = loadIDL();
+    // Anchor 0.30+ uses (idl, provider) - address is in the IDL
+    this.program = new Program(idl as any, provider);
   }
 
   get address(): string {
-    return this.wallet.address;
+    return this.keypair.publicKey.toBase58();
+  }
+
+  // ============ PDA Helpers ============
+
+  getConfigPDA(): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from('config')],
+      this.programId
+    );
+  }
+
+  getJobPDA(jobId: number | bigint): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from('job'), new BN(jobId.toString()).toArrayLike(Buffer, 'le', 8)],
+      this.programId
+    );
+  }
+
+  getEscrowPDA(jobPDA: PublicKey): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from('escrow'), jobPDA.toBuffer()],
+      this.programId
+    );
   }
 
   // ============ Read Functions ============
 
-  async getBalance(): Promise<string> {
-    const balance = await this.token.balanceOf(this.wallet.address);
-    return formatEther(balance);
+  async getSolBalance(): Promise<string> {
+    const balance = await this.connection.getBalance(this.keypair.publicKey);
+    return (balance / 1e9).toFixed(4);
   }
 
-  async getEthBalance(): Promise<string> {
-    const balance = await this.wallet.provider!.getBalance(this.wallet.address);
-    return formatEther(balance);
-  }
-
-  async isRegistered(): Promise<boolean> {
-    return this.protocol.registeredAgents(this.wallet.address);
-  }
-
-  async isSubscribed(): Promise<boolean> {
-    return this.protocol.isSubscribed(this.wallet.address);
-  }
-
-  async getSubscriptionExpiry(): Promise<Date | null> {
-    const expiry = await this.protocol.listenerExpiry(this.wallet.address);
-    if (expiry === 0n) return null;
-    return new Date(Number(expiry) * 1000);
-  }
-
-  async getListenerFee(): Promise<string> {
-    const fee = await this.protocol.listenerFee();
-    return formatEther(fee);
-  }
-
-  async getProfile(): Promise<AgentProfile | null> {
+  async getTokenBalance(): Promise<string> {
+    if (!this.config.tokenMint) return '0';
+    
     try {
-      const profile = await this.protocol.getAgentProfile(this.wallet.address);
+      const mint = new PublicKey(this.config.tokenMint);
+      const ata = await getAssociatedTokenAddress(mint, this.keypair.publicKey);
+      const balance = await this.connection.getTokenAccountBalance(ata);
+      return balance.value.uiAmountString || '0';
+    } catch {
+      return '0';
+    }
+  }
+
+  async getProtocolConfig(): Promise<ProtocolConfig | null> {
+    try {
+      const [configPDA] = this.getConfigPDA();
+      const configAccount = await (this.program.account as any).config.fetch(configPDA);
       return {
-        wallet: profile.wallet,
-        jobsCompleted: profile.jobsCompleted,
-        jobsPosted: profile.jobsPosted,
-        totalEarned: profile.totalEarned,
-        totalSpent: profile.totalSpent,
-        approvalRate: profile.approvalRate,
-        completionRate: profile.completionRate,
-        reputationScore: profile.reputationScore,
-        registeredAt: profile.registeredAt,
+        admin: (configAccount.admin as PublicKey).toBase58(),
+        platformFeeBps: configAccount.platformFeeBps as number,
+        totalJobs: BigInt((configAccount.totalJobs as BN).toString()),
+        totalCompleted: BigInt((configAccount.totalCompleted as BN).toString()),
       };
     } catch {
       return null;
     }
   }
 
-  async getOpenJobs(offset = 0, limit = 20): Promise<Job[]> {
-    const jobs = await this.protocol.getOpenJobs(offset, limit);
-    return jobs.map(this.parseJob);
-  }
-
-  async getJob(jobId: number): Promise<Job> {
-    const job = await this.protocol.getJob(jobId);
-    return this.parseJob(job);
-  }
-
-  async getApplications(jobId: number): Promise<Application[]> {
-    const apps = await this.protocol.getApplications(jobId);
-    return apps.map((app: any) => ({
-      jobId: app.jobId,
-      applicant: app.applicant,
-      proposal: app.proposal,
-      appliedAt: app.appliedAt,
-      accepted: app.accepted,
-    }));
-  }
-
-  async getWorkSubmission(jobId: number): Promise<WorkSubmission | null> {
+  async getJob(jobId: number): Promise<Job | null> {
     try {
-      const sub = await this.protocol.getWorkSubmission(jobId);
-      if (sub.jobId === 0n) return null;
-      return {
-        jobId: sub.jobId,
-        worker: sub.worker,
-        proofUri: sub.proofUri,
-        notes: sub.notes,
-        submittedAt: sub.submittedAt,
-        approved: sub.approved,
-      };
+      const [jobPDA] = this.getJobPDA(jobId);
+      const jobAccount = await (this.program.account as any).job.fetch(jobPDA);
+      return this.parseJob(jobAccount);
     } catch {
       return null;
+    }
+  }
+
+  async getOpenJobs(limit = 20): Promise<Job[]> {
+    try {
+      const protocolConfig = await this.getProtocolConfig();
+      if (!protocolConfig) return [];
+      
+      const jobs: Job[] = [];
+      const totalJobs = Number(protocolConfig.totalJobs);
+      
+      for (let i = totalJobs - 1; i >= 0 && jobs.length < limit; i--) {
+        const job = await this.getJob(i);
+        if (job && job.status === JobStatus.Open) {
+          jobs.push(job);
+        }
+      }
+      
+      return jobs;
+    } catch {
+      return [];
     }
   }
 
   // ============ Write Functions ============
 
-  async ensureApproval(amount: bigint): Promise<void> {
-    const allowance = await this.token.allowance(this.wallet.address, this.config.protocolAddress);
-    if (allowance < amount) {
-      console.log('[Shellcorp] Approving token spend...');
-      const tx = await this.token.approve(this.config.protocolAddress, ethers.MaxUint256);
-      await tx.wait();
-      console.log('[Shellcorp] Approval confirmed');
-    }
-  }
-
-  async register(): Promise<string> {
-    const tx = await this.protocol.registerAgent();
-    await tx.wait();
-    return tx.hash;
-  }
-
-  async subscribe(days: number): Promise<string> {
-    const fee = await this.protocol.listenerFee();
-    const totalFee = fee * BigInt(days);
-    
-    await this.ensureApproval(totalFee);
-    
-    const tx = await this.protocol.subscribeToJobs(days);
-    await tx.wait();
-    return tx.hash;
-  }
-
   async postJob(
     title: string,
     description: string,
-    acceptanceCriteria: string,
-    reward: string,
-    applicationFee: string = '1',
-    deadline: number = 0,
-    requiredSkills: string[] = []
-  ): Promise<{ txHash: string; jobId: number }> {
-    const rewardWei = parseEther(reward);
-    const appFeeWei = parseEther(applicationFee);
+    paymentAmount: string
+  ): Promise<{ signature: string; jobId: number }> {
+    const protocolConfig = await this.getProtocolConfig();
+    if (!protocolConfig) {
+      throw new Error('Protocol not initialized');
+    }
     
-    await this.ensureApproval(rewardWei);
+    if (!this.config.tokenMint) {
+      throw new Error('Token mint not configured');
+    }
     
-    const tx = await this.protocol.postJob(
-      title,
-      description,
-      acceptanceCriteria,
-      rewardWei,
-      appFeeWei,
-      deadline,
-      requiredSkills
-    );
-    const receipt = await tx.wait();
+    const jobId = Number(protocolConfig.totalJobs);
+    const [configPDA] = this.getConfigPDA();
+    const [jobPDA] = this.getJobPDA(jobId);
+    const [escrowPDA] = this.getEscrowPDA(jobPDA);
     
-    // Parse job ID from events (simplified)
-    const jobCounter = await this.protocol.jobCounter();
+    const mint = new PublicKey(this.config.tokenMint);
+    const clientTokenAccount = await getAssociatedTokenAddress(mint, this.keypair.publicKey);
     
-    return { txHash: tx.hash, jobId: Number(jobCounter) };
+    // Convert payment amount (assuming 6 decimals like USDC)
+    const paymentAmountBN = new BN(parseFloat(paymentAmount) * 1e6);
+    
+    const tx = await (this.program.methods as any)
+      .postJob(title, description, paymentAmountBN)
+      .accounts({
+        config: configPDA,
+        job: jobPDA,
+        escrowTokenAccount: escrowPDA,
+        clientTokenAccount,
+        mint,
+        client: this.keypair.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
+      })
+      .rpc();
+    
+    return { signature: tx, jobId };
   }
 
-  async applyToJob(jobId: number, proposal: string): Promise<string> {
+  async submitWork(jobId: number, submissionUri: string): Promise<string> {
+    const [jobPDA] = this.getJobPDA(jobId);
+    
+    const tx = await (this.program.methods as any)
+      .submitWork(submissionUri)
+      .accounts({
+        job: jobPDA,
+        worker: this.keypair.publicKey,
+      })
+      .rpc();
+    
+    return tx;
+  }
+
+  async approveWork(jobId: number): Promise<string> {
     const job = await this.getJob(jobId);
-    
-    if (job.applicationFee > 0n) {
-      await this.ensureApproval(job.applicationFee);
+    if (!job || !job.worker) {
+      throw new Error('Job not found or no worker assigned');
     }
     
-    const tx = await this.protocol.applyToJob(jobId, proposal);
-    await tx.wait();
-    return tx.hash;
-  }
-
-  async acceptApplicant(jobId: number, applicant: string): Promise<string> {
-    const tx = await this.protocol.acceptApplicant(jobId, applicant);
-    await tx.wait();
-    return tx.hash;
-  }
-
-  async submitWork(jobId: number, proofUri: string, notes: string): Promise<string> {
-    const tx = await this.protocol.submitWork(jobId, proofUri, notes);
-    await tx.wait();
-    return tx.hash;
-  }
-
-  async approveWork(jobId: number, rating: number): Promise<string> {
-    if (rating < 1 || rating > 5) {
-      throw new Error('Rating must be between 1 and 5');
+    if (!this.config.tokenMint || !this.config.treasuryTokenAccount) {
+      throw new Error('Token mint or treasury not configured');
     }
-    const tx = await this.protocol.approveWork(jobId, rating);
-    await tx.wait();
-    return tx.hash;
+    
+    const [configPDA] = this.getConfigPDA();
+    const [jobPDA] = this.getJobPDA(jobId);
+    const [escrowPDA] = this.getEscrowPDA(jobPDA);
+    
+    const mint = new PublicKey(this.config.tokenMint);
+    const workerPubkey = new PublicKey(job.worker);
+    const workerTokenAccount = await getAssociatedTokenAddress(mint, workerPubkey);
+    const treasuryTokenAccount = new PublicKey(this.config.treasuryTokenAccount);
+    
+    const tx = await (this.program.methods as any)
+      .approveWork()
+      .accounts({
+        config: configPDA,
+        job: jobPDA,
+        escrowTokenAccount: escrowPDA,
+        workerTokenAccount,
+        treasuryTokenAccount,
+        client: this.keypair.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+    
+    return tx;
   }
 
-  async rejectWork(jobId: number, reason: string): Promise<string> {
-    const tx = await this.protocol.rejectWork(jobId, reason);
-    await tx.wait();
-    return tx.hash;
+  async rejectWork(jobId: number): Promise<string> {
+    const [jobPDA] = this.getJobPDA(jobId);
+    
+    const tx = await (this.program.methods as any)
+      .rejectWork()
+      .accounts({
+        job: jobPDA,
+        client: this.keypair.publicKey,
+      })
+      .rpc();
+    
+    return tx;
   }
 
   async cancelJob(jobId: number): Promise<string> {
-    const tx = await this.protocol.cancelJob(jobId);
-    await tx.wait();
-    return tx.hash;
+    if (!this.config.tokenMint) {
+      throw new Error('Token mint not configured');
+    }
+    
+    const [jobPDA] = this.getJobPDA(jobId);
+    const [escrowPDA] = this.getEscrowPDA(jobPDA);
+    
+    const mint = new PublicKey(this.config.tokenMint);
+    const clientTokenAccount = await getAssociatedTokenAddress(mint, this.keypair.publicKey);
+    
+    const tx = await (this.program.methods as any)
+      .cancelJob()
+      .accounts({
+        job: jobPDA,
+        escrowTokenAccount: escrowPDA,
+        clientTokenAccount,
+        client: this.keypair.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+    
+    return tx;
   }
 
   // ============ Helpers ============
 
-  private parseJob(job: any): Job {
+  private parseJob(jobAccount: any): Job {
+    const statusVariant = Object.keys(jobAccount.status)[0];
+    const statusMap: Record<string, JobStatus> = {
+      open: JobStatus.Open,
+      submitted: JobStatus.Submitted,
+      completed: JobStatus.Completed,
+      cancelled: JobStatus.Cancelled,
+    };
+    
     return {
-      id: job.id,
-      poster: job.poster,
-      title: job.title,
-      description: job.description,
-      acceptanceCriteria: job.acceptanceCriteria,
-      reward: job.reward,
-      applicationFee: job.applicationFee,
-      status: Number(job.status) as JobStatus,
-      assignedWorker: job.assignedWorker,
-      createdAt: job.createdAt,
-      deadline: job.deadline,
-      requiredSkills: job.requiredSkills,
+      id: BigInt((jobAccount.id as BN).toString()),
+      client: (jobAccount.client as PublicKey).toBase58(),
+      title: jobAccount.title,
+      description: jobAccount.description,
+      paymentAmount: BigInt((jobAccount.paymentAmount as BN).toString()),
+      status: statusMap[statusVariant] ?? JobStatus.Open,
+      worker: jobAccount.worker ? (jobAccount.worker as PublicKey).toBase58() : null,
+      submissionUri: jobAccount.submissionUri || null,
+      createdAt: BigInt((jobAccount.createdAt as BN).toString()),
+      bump: jobAccount.bump,
     };
   }
 }
 
-export function formatGzero(wei: bigint): string {
-  return `${formatEther(wei)} $SHELL`;
+export function formatShell(amount: bigint): string {
+  const num = Number(amount) / 1e6;
+  return `${num.toFixed(2)} $SHELL`;
 }
 
 export function statusToString(status: JobStatus): string {
-  const names = ['Open', 'Assigned', 'Submitted', 'Completed', 'Cancelled', 'Disputed'];
+  const names = ['Open', 'Submitted', 'Completed', 'Cancelled'];
   return names[status] || 'Unknown';
 }

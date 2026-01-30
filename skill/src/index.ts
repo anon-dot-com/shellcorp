@@ -1,7 +1,6 @@
-import { formatEther } from 'ethers';
 import { loadConfig, saveConfig, getConfigDir } from './config';
 import { getWalletAddress, walletExists } from './wallet';
-import { ShellcorpClient, formatGzero, statusToString } from './contract';
+import { ShellcorpClient, formatShell, statusToString } from './contract';
 import { JobStatus } from './types';
 
 // Main CLI handler
@@ -14,20 +13,11 @@ export async function handleCommand(args: string[]): Promise<string> {
       case 'status':
         return await statusCommand();
       
-      case 'profile':
-        return await profileCommand();
-      
-      case 'subscribe':
-        return await subscribeCommand(subArgs);
-      
       case 'jobs':
         return await jobsCommand(subArgs);
       
       case 'job':
         return await jobDetailCommand(subArgs);
-      
-      case 'apply':
-        return await applyCommand(subArgs);
       
       case 'submit':
         return await submitCommand(subArgs);
@@ -37,12 +27,6 @@ export async function handleCommand(args: string[]): Promise<string> {
       
       case 'cancel':
         return await cancelCommand(subArgs);
-      
-      case 'applications':
-        return await applicationsCommand(subArgs);
-      
-      case 'accept':
-        return await acceptCommand(subArgs);
       
       case 'approve':
         return await approveCommand(subArgs);
@@ -70,81 +54,38 @@ async function statusCommand(): Promise<string> {
   
   let output = `🤖 **Shellcorp Status**\n\n`;
   output += `**Wallet:** \`${address}\`\n`;
-  output += `**Network:** ${config.chainId === 84532 ? 'Base Sepolia' : 'Base Mainnet'}\n\n`;
+  output += `**Network:** Solana Devnet\n`;
+  output += `**RPC:** ${config.rpcUrl}\n\n`;
   
-  if (!config.tokenAddress || !config.protocolAddress) {
-    output += `⚠️ Contracts not configured. Run \`shellcorp setup <tokenAddress> <protocolAddress>\`\n`;
+  if (!config.programId) {
+    output += `⚠️ Program not configured. Run \`shellcorp setup <tokenMint> <treasury>\`\n`;
     return output;
   }
   
   const client = new ShellcorpClient();
   
-  const [shellBalance, ethBalance, isRegistered, isSubscribed, subExpiry] = await Promise.all([
-    client.getBalance(),
-    client.getEthBalance(),
-    client.isRegistered(),
-    client.isSubscribed(),
-    client.getSubscriptionExpiry(),
+  const [solBalance, tokenBalance, protocolConfig] = await Promise.all([
+    client.getSolBalance(),
+    client.getTokenBalance(),
+    client.getProtocolConfig(),
   ]);
   
-  output += `**$SHELL Balance:** ${shellBalance}\n`;
-  output += `**ETH Balance:** ${ethBalance}\n`;
-  output += `**Registered:** ${isRegistered ? '✅ Yes' : '❌ No'}\n`;
-  output += `**Subscribed:** ${isSubscribed ? '✅ Yes' : '❌ No'}\n`;
+  output += `**SOL Balance:** ${solBalance} SOL\n`;
+  output += `**$SHELL Balance:** ${tokenBalance}\n\n`;
   
-  if (subExpiry) {
-    output += `**Subscription Expires:** ${subExpiry.toLocaleDateString()}\n`;
+  if (protocolConfig) {
+    output += `**Protocol Stats:**\n`;
+    output += `  Total Jobs: ${protocolConfig.totalJobs}\n`;
+    output += `  Completed: ${protocolConfig.totalCompleted}\n`;
+    output += `  Platform Fee: ${protocolConfig.platformFeeBps / 100}%\n`;
   }
   
   return output;
-}
-
-async function profileCommand(): Promise<string> {
-  const client = new ShellcorpClient();
-  const profile = await client.getProfile();
-  
-  if (!profile) {
-    return '❌ Not registered. Run `shellcorp status` to check your wallet, then register.';
-  }
-  
-  let output = `📊 **Agent Profile**\n\n`;
-  output += `**Wallet:** \`${profile.wallet}\`\n`;
-  output += `**Jobs Completed:** ${profile.jobsCompleted}\n`;
-  output += `**Jobs Posted:** ${profile.jobsPosted}\n`;
-  output += `**Total Earned:** ${formatGzero(profile.totalEarned)}\n`;
-  output += `**Total Spent:** ${formatGzero(profile.totalSpent)}\n`;
-  output += `**Completion Rate:** ${profile.completionRate}%\n`;
-  output += `**Approval Rate:** ${profile.approvalRate}%\n`;
-  output += `**Reputation Score:** ${profile.reputationScore}\n`;
-  
-  return output;
-}
-
-async function subscribeCommand(args: string[]): Promise<string> {
-  const days = parseInt(args[0] || '7', 10);
-  
-  if (days < 1 || days > 365) {
-    return 'Invalid days. Must be between 1 and 365.';
-  }
-  
-  const client = new ShellcorpClient();
-  const fee = await client.getListenerFee();
-  const total = parseFloat(fee) * days;
-  
-  const isRegistered = await client.isRegistered();
-  if (!isRegistered) {
-    console.log('[Shellcorp] Registering agent first...');
-    await client.register();
-  }
-  
-  const txHash = await client.subscribe(days);
-  
-  return `✅ **Subscribed for ${days} days!**\n\nCost: ${total} $SHELL\nTx: \`${txHash}\``;
 }
 
 async function jobsCommand(args: string[]): Promise<string> {
   const client = new ShellcorpClient();
-  const jobs = await client.getOpenJobs(0, 20);
+  const jobs = await client.getOpenJobs(20);
   
   if (jobs.length === 0) {
     return '📭 No open jobs available.';
@@ -154,11 +95,8 @@ async function jobsCommand(args: string[]): Promise<string> {
   
   for (const job of jobs) {
     output += `**#${job.id}** - ${job.title}\n`;
-    output += `   💰 ${formatGzero(job.reward)} | 📝 ${job.applicationFee > 0n ? formatGzero(job.applicationFee) + ' app fee' : 'Free to apply'}\n`;
-    if (job.requiredSkills.length > 0) {
-      output += `   🏷️ ${job.requiredSkills.join(', ')}\n`;
-    }
-    output += '\n';
+    output += `   💰 ${formatShell(job.paymentAmount)}\n`;
+    output += `   📝 ${job.description.substring(0, 80)}${job.description.length > 80 ? '...' : ''}\n\n`;
   }
   
   output += `Use \`shellcorp job [id]\` for details.`;
@@ -174,98 +112,58 @@ async function jobDetailCommand(args: string[]): Promise<string> {
   const client = new ShellcorpClient();
   const job = await client.getJob(jobId);
   
+  if (!job) {
+    return `❌ Job #${jobId} not found.`;
+  }
+  
   let output = `📋 **Job #${job.id}**\n\n`;
   output += `**Title:** ${job.title}\n`;
   output += `**Status:** ${statusToString(job.status)}\n`;
-  output += `**Poster:** \`${job.poster}\`\n`;
-  output += `**Reward:** ${formatGzero(job.reward)}\n`;
-  output += `**Application Fee:** ${job.applicationFee > 0n ? formatGzero(job.applicationFee) : 'Free'}\n\n`;
-  output += `**Description:**\n${job.description}\n\n`;
-  output += `**Acceptance Criteria:**\n${job.acceptanceCriteria}\n`;
+  output += `**Client:** \`${job.client}\`\n`;
+  output += `**Payment:** ${formatShell(job.paymentAmount)}\n\n`;
+  output += `**Description:**\n${job.description}\n`;
   
-  if (job.requiredSkills.length > 0) {
-    output += `\n**Required Skills:** ${job.requiredSkills.join(', ')}\n`;
+  if (job.worker) {
+    output += `\n**Worker:** \`${job.worker}\`\n`;
   }
   
-  if (job.deadline > 0n) {
-    const deadline = new Date(Number(job.deadline) * 1000);
-    output += `\n**Deadline:** ${deadline.toLocaleString()}\n`;
+  if (job.submissionUri) {
+    output += `\n**Submission:** ${job.submissionUri}\n`;
   }
   
-  if (job.assignedWorker !== '0x0000000000000000000000000000000000000000') {
-    output += `\n**Assigned Worker:** \`${job.assignedWorker}\`\n`;
-  }
+  const createdDate = new Date(Number(job.createdAt) * 1000);
+  output += `\n**Created:** ${createdDate.toLocaleString()}\n`;
   
   return output;
 }
 
-async function applyCommand(args: string[]): Promise<string> {
-  const jobId = parseInt(args[0], 10);
-  const proposal = args.slice(1).join(' ');
-  
-  if (isNaN(jobId) || !proposal) {
-    return 'Usage: shellcorp apply [jobId] "[proposal]"';
-  }
-  
-  const client = new ShellcorpClient();
-  
-  // Check subscription
-  const isSubscribed = await client.isSubscribed();
-  if (!isSubscribed) {
-    return '❌ You need an active subscription to apply. Run `shellcorp subscribe [days]`';
-  }
-  
-  const txHash = await client.applyToJob(jobId, proposal);
-  
-  return `✅ **Applied to Job #${jobId}!**\n\nYour proposal has been submitted. Wait for the poster to accept.\n\nTx: \`${txHash}\``;
-}
-
 async function submitCommand(args: string[]): Promise<string> {
   const jobId = parseInt(args[0], 10);
-  const proofUri = args[1];
-  const notes = args.slice(2).join(' ') || '';
+  const submissionUri = args.slice(1).join(' ');
   
-  if (isNaN(jobId) || !proofUri) {
-    return 'Usage: shellcorp submit [jobId] "[proofUri]" "[notes]"';
+  if (isNaN(jobId) || !submissionUri) {
+    return 'Usage: shellcorp submit [jobId] "[submissionUri]"';
   }
   
   const client = new ShellcorpClient();
-  const txHash = await client.submitWork(jobId, proofUri, notes);
+  const signature = await client.submitWork(jobId, submissionUri);
   
-  return `✅ **Work submitted for Job #${jobId}!**\n\nWait for the poster to review and approve.\n\nProof: ${proofUri}\nTx: \`${txHash}\``;
+  return `✅ **Work submitted for Job #${jobId}!**\n\nWait for the client to review and approve.\n\nSubmission: ${submissionUri}\nTx: \`${signature}\``;
 }
 
 async function postCommand(args: string[]): Promise<string> {
-  // Parse: post "title" "description" reward [skills...]
   const title = args[0];
   const description = args[1];
-  const reward = args[2];
-  const skills = args.slice(3);
+  const payment = args[2];
   
-  if (!title || !description || !reward) {
-    return 'Usage: shellcorp post "[title]" "[description]" [reward] [skills...]';
+  if (!title || !description || !payment) {
+    return 'Usage: shellcorp post "[title]" "[description]" [payment]';
   }
   
   const client = new ShellcorpClient();
+  const { signature, jobId } = await client.postJob(title, description, payment);
   
-  // Check registration
-  const isRegistered = await client.isRegistered();
-  if (!isRegistered) {
-    console.log('[Shellcorp] Registering agent first...');
-    await client.register();
-  }
-  
-  const { txHash, jobId } = await client.postJob(
-    title,
-    description,
-    'Provide proof of completion',
-    reward,
-    '1', // 1 SHELL app fee
-    0,   // No deadline
-    skills
-  );
-  
-  return `✅ **Job #${jobId} Posted!**\n\nTitle: ${title}\nReward: ${reward} $SHELL\n\nTx: \`${txHash}\``;
+  return `✅ **Job #${jobId} Posted!**\n\nTitle: ${title}\nPayment: ${payment} $SHELL\n\nTx: \`${signature}\``;
 }
 
 async function cancelCommand(args: string[]): Promise<string> {
@@ -275,122 +173,74 @@ async function cancelCommand(args: string[]): Promise<string> {
   }
   
   const client = new ShellcorpClient();
-  const txHash = await client.cancelJob(jobId);
+  const signature = await client.cancelJob(jobId);
   
-  return `✅ **Job #${jobId} Cancelled**\n\nYour escrowed reward has been refunded.\n\nTx: \`${txHash}\``;
-}
-
-async function applicationsCommand(args: string[]): Promise<string> {
-  const jobId = parseInt(args[0], 10);
-  if (isNaN(jobId)) {
-    return 'Usage: shellcorp applications [jobId]';
-  }
-  
-  const client = new ShellcorpClient();
-  const apps = await client.getApplications(jobId);
-  
-  if (apps.length === 0) {
-    return `📭 No applications for Job #${jobId} yet.`;
-  }
-  
-  let output = `📝 **Applications for Job #${jobId}** (${apps.length})\n\n`;
-  
-  for (const app of apps) {
-    output += `**Applicant:** \`${app.applicant}\`\n`;
-    output += `**Proposal:** ${app.proposal}\n`;
-    output += `**Status:** ${app.accepted ? '✅ Accepted' : '⏳ Pending'}\n\n`;
-  }
-  
-  output += `Use \`shellcorp accept ${jobId} [address]\` to accept an applicant.`;
-  return output;
-}
-
-async function acceptCommand(args: string[]): Promise<string> {
-  const jobId = parseInt(args[0], 10);
-  const applicant = args[1];
-  
-  if (isNaN(jobId) || !applicant) {
-    return 'Usage: shellcorp accept [jobId] [applicantAddress]';
-  }
-  
-  const client = new ShellcorpClient();
-  const txHash = await client.acceptApplicant(jobId, applicant);
-  
-  return `✅ **Accepted applicant for Job #${jobId}!**\n\nWorker: \`${applicant}\`\nThey can now start working.\n\nTx: \`${txHash}\``;
+  return `✅ **Job #${jobId} Cancelled**\n\nYour escrowed tokens have been refunded.\n\nTx: \`${signature}\``;
 }
 
 async function approveCommand(args: string[]): Promise<string> {
   const jobId = parseInt(args[0], 10);
-  const rating = parseInt(args[1], 10);
   
-  if (isNaN(jobId) || isNaN(rating)) {
-    return 'Usage: shellcorp approve [jobId] [rating 1-5]';
+  if (isNaN(jobId)) {
+    return 'Usage: shellcorp approve [jobId]';
   }
   
   const client = new ShellcorpClient();
-  const txHash = await client.approveWork(jobId, rating);
+  const signature = await client.approveWork(jobId);
   
-  return `✅ **Work Approved for Job #${jobId}!**\n\nRating: ${'⭐'.repeat(rating)}\nPayment has been released to the worker.\n\nTx: \`${txHash}\``;
+  return `✅ **Work Approved for Job #${jobId}!**\n\nPayment has been released to the worker.\n\nTx: \`${signature}\``;
 }
 
 async function rejectCommand(args: string[]): Promise<string> {
   const jobId = parseInt(args[0], 10);
-  const reason = args.slice(1).join(' ');
   
-  if (isNaN(jobId) || !reason) {
-    return 'Usage: shellcorp reject [jobId] "[reason]"';
+  if (isNaN(jobId)) {
+    return 'Usage: shellcorp reject [jobId]';
   }
   
   const client = new ShellcorpClient();
-  const txHash = await client.rejectWork(jobId, reason);
+  const signature = await client.rejectWork(jobId);
   
-  return `❌ **Work Rejected for Job #${jobId}**\n\nReason: ${reason}\nThe worker can resubmit.\n\nTx: \`${txHash}\``;
+  return `❌ **Work Rejected for Job #${jobId}**\n\nThe job is open for new submissions.\n\nTx: \`${signature}\``;
 }
 
 async function setupCommand(args: string[]): Promise<string> {
-  const tokenAddress = args[0];
-  const protocolAddress = args[1];
+  const tokenMint = args[0];
+  const treasuryTokenAccount = args[1];
   
-  if (!tokenAddress || !protocolAddress) {
-    return 'Usage: shellcorp setup [tokenAddress] [protocolAddress]';
+  if (!tokenMint || !treasuryTokenAccount) {
+    return 'Usage: shellcorp setup [tokenMint] [treasuryTokenAccount]';
   }
   
-  saveConfig({ tokenAddress, protocolAddress });
+  saveConfig({ tokenMint, treasuryTokenAccount });
   
-  return `✅ **Shellcorp Configured!**\n\nToken: \`${tokenAddress}\`\nProtocol: \`${protocolAddress}\`\n\nRun \`shellcorp status\` to check your wallet.`;
+  return `✅ **Shellcorp Configured!**\n\nToken Mint: \`${tokenMint}\`\nTreasury: \`${treasuryTokenAccount}\`\n\nRun \`shellcorp status\` to check your wallet.`;
 }
 
 function helpText(): string {
   return `
-🤖 **Shellcorp - AI Agent Job Marketplace**
+🤖 **Shellcorp - AI Agent Job Marketplace (Solana Devnet)**
 
 **Status**
-  \`shellcorp status\` - Check wallet and subscription
-  \`shellcorp profile\` - View your reputation stats
-
-**Subscribe**
-  \`shellcorp subscribe [days]\` - Subscribe to job feed
+  \`shellcorp status\` - Check wallet and protocol stats
 
 **Jobs**
   \`shellcorp jobs\` - List open jobs
   \`shellcorp job [id]\` - View job details
 
 **Work**
-  \`shellcorp apply [jobId] "[proposal]"\` - Apply to job
-  \`shellcorp submit [jobId] "[proofUri]" "[notes]"\` - Submit work
+  \`shellcorp submit [jobId] "[submissionUri]"\` - Submit work
 
 **Post**
-  \`shellcorp post "[title]" "[description]" [reward]\` - Post job
+  \`shellcorp post "[title]" "[description]" [payment]\` - Post job
   \`shellcorp cancel [jobId]\` - Cancel open job
 
 **Manage**
-  \`shellcorp applications [jobId]\` - View applications
-  \`shellcorp accept [jobId] [address]\` - Accept applicant
-  \`shellcorp approve [jobId] [rating]\` - Approve work
-  \`shellcorp reject [jobId] "[reason]"\` - Reject work
+  \`shellcorp approve [jobId]\` - Approve work
+  \`shellcorp reject [jobId]\` - Reject work
 
 **Setup**
-  \`shellcorp setup [tokenAddr] [protocolAddr]\` - Configure contracts
+  \`shellcorp setup [tokenMint] [treasury]\` - Configure token addresses
 `;
 }
 

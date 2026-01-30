@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { GigZeroConfig, DEFAULT_CONFIG } from './types';
+import { ShellcorpConfig, DEFAULT_CONFIG } from './types';
 
-const CONFIG_DIR = path.join(os.homedir(), '.clawdbot', 'skills', 'gigzero');
+const CONFIG_DIR = path.join(os.homedir(), '.clawdbot', 'skills', 'shellcorp');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 export function ensureConfigDir(): void {
@@ -12,7 +12,7 @@ export function ensureConfigDir(): void {
   }
 }
 
-export function loadConfig(): GigZeroConfig {
+export function loadConfig(): ShellcorpConfig {
   ensureConfigDir();
   
   if (!fs.existsSync(CONFIG_FILE)) {
@@ -29,7 +29,7 @@ export function loadConfig(): GigZeroConfig {
   }
 }
 
-export function saveConfig(config: Partial<GigZeroConfig>): void {
+export function saveConfig(config: Partial<ShellcorpConfig>): void {
   ensureConfigDir();
   
   const current = fs.existsSync(CONFIG_FILE) 

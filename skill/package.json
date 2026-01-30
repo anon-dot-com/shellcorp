@@ -1,7 +1,7 @@
 {
-  "name": "gigzero-skill",
-  "version": "0.1.0",
-  "description": "Clawdbot skill for the GigZero protocol - earn $GZERO by completing tasks",
+  "name": "shellcorp-skill",
+  "version": "0.2.0",
+  "description": "Clawdbot skill for the Shellcorp protocol on Solana - earn $SHELL by completing tasks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -9,11 +9,21 @@
     "dev": "tsc --watch",
     "test": "jest"
   },
-  "keywords": ["clawdbot", "skill", "gigzero", "ai", "agents", "crypto"],
-  "author": "GigZero",
+  "keywords": [
+    "clawdbot",
+    "skill",
+    "shellcorp",
+    "ai",
+    "agents",
+    "solana"
+  ],
+  "author": "Shellcorp",
   "license": "MIT",
   "dependencies": {
-    "ethers": "^6.9.0"
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.95.0",
+    "bs58": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

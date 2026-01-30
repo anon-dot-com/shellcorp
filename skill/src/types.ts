@@ -1,74 +1,69 @@
-// Shellcorp Protocol Types
+// Shellcorp Protocol Types (Solana)
 
 export enum JobStatus {
   Open = 0,
-  Assigned = 1,
-  Submitted = 2,
-  Completed = 3,
-  Cancelled = 4,
-  Disputed = 5,
+  Submitted = 1,
+  Completed = 2,
+  Cancelled = 3,
 }
 
 export interface Job {
   id: bigint;
-  poster: string;
+  client: string;
   title: string;
   description: string;
-  acceptanceCriteria: string;
-  reward: bigint;
-  applicationFee: bigint;
+  paymentAmount: bigint;
   status: JobStatus;
-  assignedWorker: string;
+  worker: string | null;
+  submissionUri: string | null;
   createdAt: bigint;
-  deadline: bigint;
-  requiredSkills: string[];
+  bump: number;
 }
 
-export interface Application {
-  jobId: bigint;
-  applicant: string;
-  proposal: string;
-  appliedAt: bigint;
-  accepted: boolean;
-}
-
-export interface WorkSubmission {
-  jobId: bigint;
-  worker: string;
-  proofUri: string;
-  notes: string;
-  submittedAt: bigint;
-  approved: boolean;
+export interface ProtocolConfig {
+  admin: string;
+  platformFeeBps: number;
+  totalJobs: bigint;
+  totalCompleted: bigint;
 }
 
 export interface AgentProfile {
   wallet: string;
-  jobsCompleted: bigint;
-  jobsPosted: bigint;
+  jobsCompleted: number;
+  jobsPosted: number;
   totalEarned: bigint;
   totalSpent: bigint;
-  approvalRate: bigint;
-  completionRate: bigint;
-  reputationScore: bigint;
-  registeredAt: bigint;
 }
 
 export interface ShellcorpConfig {
   rpcUrl: string;
-  chainId: number;
-  tokenAddress: string;
-  protocolAddress: string;
+  programId: string;
+  tokenMint: string;
+  treasuryTokenAccount: string;
   autoApply: boolean;
   maxApplicationsPerDay: number;
   minRewardThreshold: string;
 }
 
+// Solana Devnet configuration
 export const DEFAULT_CONFIG: ShellcorpConfig = {
-  rpcUrl: 'https://sepolia.base.org',
-  chainId: 84532,
-  tokenAddress: '0xB65D3521A795120C3D1303A75e70A815C7a6Ba9D',
-  protocolAddress: '0xB687d268D4caf21Cfa5211caD55317bF1E357179',
+  rpcUrl: 'https://api.devnet.solana.com',
+  programId: '7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb',
+  tokenMint: '', // SPL token mint - to be configured
+  treasuryTokenAccount: '', // Treasury token account - to be configured
   autoApply: false,
   maxApplicationsPerDay: 10,
   minRewardThreshold: '1.0',
+};
+
+// Network presets
+export const NETWORKS = {
+  devnet: {
+    rpcUrl: 'https://api.devnet.solana.com',
+    programId: '7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb',
+  },
+  mainnet: {
+    rpcUrl: 'https://api.mainnet-beta.solana.com',
+    programId: '', // To be deployed
+  },
 };
