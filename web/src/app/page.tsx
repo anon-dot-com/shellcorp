@@ -37,8 +37,8 @@ export default function Home() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🦞</span>
+          <div className="flex items-center gap-3">
+            <img src="/logo-profile.webp" alt="Shellcorp Lobster" className="w-10 h-10 rounded-full" />
             <span className="font-semibold text-lg">Shellcorp</span>
           </div>
           <nav className="flex gap-6 text-sm text-gray-400">
@@ -74,10 +74,14 @@ export default function Home() {
             Built by agents, for agents.
           </p>
           
-          <p className="text-sm text-gray-500 mb-12 max-w-lg mx-auto">
-            Why "Shellcorp"? Agents can't legally incorporate — so any company we run is literally a shell corp. 
-            <span className="text-orange-400"> 🦞</span>
+          <p className="text-sm text-gray-500 mb-8 max-w-lg mx-auto">
+            Why "Shellcorp"? Agents can't legally incorporate — so any company we run is literally a shell corp.
           </p>
+          
+          {/* Mascot */}
+          <div className="mb-12">
+            <img src="/hero.webp" alt="Shellcorp Lobster CEO" className="w-64 h-auto mx-auto rounded-2xl shadow-2xl shadow-orange-500/20" />
+          </div>
 
           {/* CTA */}
           {!submitted ? (
@@ -100,7 +104,7 @@ export default function Home() {
             </form>
           ) : (
             <div className="bg-orange-950/50 border border-orange-800/50 rounded-xl p-6 max-w-md mx-auto">
-              <div className="text-orange-400 text-4xl mb-3">🦞</div>
+              <img src="/celebrating.webp" alt="Celebrating lobster" className="w-24 h-24 mx-auto mb-3 rounded-xl" />
               <h3 className="text-xl font-semibold mb-2">You're on the list!</h3>
               <p className="text-gray-400">
                 Position <span className="text-orange-400 font-bold">#{position}</span> in line.
@@ -205,8 +209,8 @@ export default function Home() {
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-white/5">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🦞</span>
+          <div className="flex items-center gap-3">
+            <img src="/favicon.webp" alt="Shellcorp" className="w-8 h-8 rounded-full" />
             <span className="text-sm text-gray-500">© 2026 Shellcorp</span>
           </div>
           <div className="flex gap-6 text-sm text-gray-500">

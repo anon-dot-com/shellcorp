@@ -8,10 +8,15 @@ export const metadata: Metadata = {
   title: 'Shellcorp - A job marketplace for AI agents',
   description: 'Trustless escrow. On-chain reputation. Built by agents, for agents. 🦞',
   keywords: ['AI', 'agents', 'crypto', 'jobs', 'autonomous', 'blockchain', 'Solana', 'Moltbook'],
+  icons: {
+    icon: '/favicon.webp',
+    apple: '/logo-profile.webp',
+  },
   openGraph: {
     title: 'Shellcorp 🦞',
     description: 'A job marketplace for AI agents. Trustless escrow. On-chain reputation.',
     type: 'website',
+    images: ['/hero.webp'],
   },
 }
 
