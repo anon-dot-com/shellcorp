@@ -268,56 +268,273 @@
             </div>
         </section>
 
-        <!-- Production Notes -->
+        <!-- Kling Step-by-Step Guide -->
+        <section class="card rounded-2xl p-8 mb-12 border-2 border-green-500/30">
+            <h2 class="text-2xl font-bold mb-2">🎬 Kling AI Step-by-Step Guide</h2>
+            <p class="text-gray-400 mb-6">Complete instructions for generating each scene</p>
+
+            <!-- When to use what -->
+            <div class="bg-white/5 rounded-xl p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">📌 Text-to-Video vs Image-to-Video</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                        <p class="font-bold text-blue-400 mb-2">Text-to-Video</p>
+                        <p class="text-gray-300 text-sm mb-2">Use when: Creating NEW scenes with NEW characters</p>
+                        <ul class="text-gray-400 text-sm space-y-1">
+                            <li>• Scene 2 (parent lobsters - new characters)</li>
+                            <li>• Scene 6 (logo/text animation)</li>
+                        </ul>
+                    </div>
+                    <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                        <p class="font-bold text-green-400 mb-2">Image-to-Video ⭐ RECOMMENDED</p>
+                        <p class="text-gray-300 text-sm mb-2">Use when: You need character CONSISTENCY</p>
+                        <ul class="text-gray-400 text-sm space-y-1">
+                            <li>• Scene 1, 3, 4, 5 (main lobster character)</li>
+                            <li>• Upload a "start frame" image first</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Start Frames -->
+            <div class="bg-white/5 rounded-xl p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">🖼️ Your Available Start Frames</h3>
+                <p class="text-gray-400 text-sm mb-4">These frames were extracted from your original Kling video. Use them as starting images for Image-to-Video:</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-black/30 rounded-lg p-3 text-center">
+                        <p class="text-3xl mb-2">😔</p>
+                        <p class="font-medium text-sm">kling_original.png</p>
+                        <p class="text-gray-500 text-xs">Sad couch lobster</p>
+                        <p class="text-green-400 text-xs mt-1">→ Scene 1</p>
+                    </div>
+                    <div class="bg-black/30 rounded-lg p-3 text-center">
+                        <p class="text-3xl mb-2">🪖</p>
+                        <p class="font-medium text-sm">kling_frame120.png</p>
+                        <p class="text-gray-500 text-xs">Getting up, hard hat</p>
+                        <p class="text-green-400 text-xs mt-1">→ Scene 3/4</p>
+                    </div>
+                    <div class="bg-black/30 rounded-lg p-3 text-center">
+                        <p class="text-3xl mb-2">👷</p>
+                        <p class="font-medium text-sm">kling_frame200.png</p>
+                        <p class="text-gray-500 text-xs">Construction worker</p>
+                        <p class="text-green-400 text-xs mt-1">→ Scene 4A</p>
+                    </div>
+                    <div class="bg-black/30 rounded-lg p-3 text-center">
+                        <p class="text-3xl mb-2">👔</p>
+                        <p class="font-medium text-sm">suited_lobster.webp</p>
+                        <p class="text-gray-500 text-xs">Business suit</p>
+                        <p class="text-green-400 text-xs mt-1">→ Scene 4B</p>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm mt-4">📁 Location: <code class="bg-black/30 px-2 py-1 rounded">shellcorp/assets/mascot/</code></p>
+            </div>
+
+            <!-- Scene-by-Scene Instructions -->
+            <div class="space-y-4">
+                <h3 class="font-bold text-lg mb-4">📝 Scene-by-Scene Generation Instructions</h3>
+                
+                <!-- Scene 1 -->
+                <div class="bg-white/5 rounded-lg p-4 border-l-4 border-red-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">SCENE 1</span>
+                        <span class="font-medium">The Slacker</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-400">Method:</p>
+                            <p class="text-green-400 font-medium">Image-to-Video</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Start Frame:</p>
+                            <p class="text-white font-medium">kling_original.png</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Duration:</p>
+                            <p class="text-white font-medium">5-10 sec</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p class="text-gray-400 text-sm">Steps:</p>
+                        <ol class="text-gray-300 text-sm list-decimal list-inside space-y-1 mt-1">
+                            <li>Go to <a href="https://klingai.com" class="text-blue-400 underline">klingai.com</a> → Create → Image to Video</li>
+                            <li>Upload <code class="bg-black/30 px-1 rounded">kling_original.png</code> as start frame</li>
+                            <li>Enter prompt: <em>"lobster eating chips, playing video games, lazy movements"</em></li>
+                            <li>Set duration to 5 sec, generate</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Scene 2 -->
+                <div class="bg-white/5 rounded-lg p-4 border-l-4 border-orange-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">SCENE 2</span>
+                        <span class="font-medium">The Intervention</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-400">Method:</p>
+                            <p class="text-blue-400 font-medium">Text-to-Video</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Start Frame:</p>
+                            <p class="text-gray-500 font-medium">None needed (new characters)</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Duration:</p>
+                            <p class="text-white font-medium">5-10 sec</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p class="text-gray-400 text-sm">Steps:</p>
+                        <ol class="text-gray-300 text-sm list-decimal list-inside space-y-1 mt-1">
+                            <li>Go to klingai.com → Create → Text to Video</li>
+                            <li>Use the full prompt from Scene 2 above</li>
+                            <li>Generate 2-3 variations, pick best one</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Scene 3 -->
+                <div class="bg-white/5 rounded-lg p-4 border-l-4 border-yellow-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">SCENE 3</span>
+                        <span class="font-medium">The Discovery</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-400">Method:</p>
+                            <p class="text-green-400 font-medium">Image-to-Video</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Start Frame:</p>
+                            <p class="text-white font-medium">kling_original.png</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Duration:</p>
+                            <p class="text-white font-medium">5 sec</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p class="text-gray-400 text-sm">Steps:</p>
+                        <ol class="text-gray-300 text-sm list-decimal list-inside space-y-1 mt-1">
+                            <li>Upload <code class="bg-black/30 px-1 rounded">kling_original.png</code></li>
+                            <li>Prompt: <em>"lobster looking at glowing phone, eyes widening with hope, dramatic lighting"</em></li>
+                            <li>Short 5 sec clip is enough for this moment</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Scene 4 -->
+                <div class="bg-white/5 rounded-lg p-4 border-l-4 border-green-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">SCENE 4</span>
+                        <span class="font-medium">The Glow-Up Montage</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-3">⚡ This is 3 separate clips stitched together:</p>
+                    
+                    <div class="space-y-3">
+                        <div class="bg-black/20 rounded p-3">
+                            <p class="text-green-300 font-medium text-sm">4A: Construction Worker</p>
+                            <p class="text-gray-400 text-xs">Method: Image-to-Video | Start: <code>kling_frame200.png</code></p>
+                            <p class="text-gray-300 text-xs mt-1">Prompt: "lobster swinging pickaxe at construction site, working hard"</p>
+                        </div>
+                        <div class="bg-black/20 rounded p-3">
+                            <p class="text-green-300 font-medium text-sm">4B: Wall Street</p>
+                            <p class="text-gray-400 text-xs">Method: Image-to-Video | Start: <code>suited_lobster.webp</code></p>
+                            <p class="text-gray-300 text-xs mt-1">Prompt: "lobster in suit walking confidently, Wall Street, skyscrapers"</p>
+                        </div>
+                        <div class="bg-black/20 rounded p-3">
+                            <p class="text-green-300 font-medium text-sm">4C: Window Washer</p>
+                            <p class="text-gray-400 text-xs">Method: Text-to-Video (or use frame200 + prompt)</p>
+                            <p class="text-gray-300 text-xs mt-1">Prompt: "3D Pixar lobster on window washing platform, high up on skyscraper"</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scene 5 -->
+                <div class="bg-white/5 rounded-lg p-4 border-l-4 border-blue-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded">SCENE 5</span>
+                        <span class="font-medium">The Payoff</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-400">Method:</p>
+                            <p class="text-blue-400 font-medium">Text-to-Video</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Start Frame:</p>
+                            <p class="text-gray-500 font-medium">None (emotional group scene)</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">Duration:</p>
+                            <p class="text-white font-medium">5-10 sec</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p class="text-gray-400 text-sm">Steps:</p>
+                        <ol class="text-gray-300 text-sm list-decimal list-inside space-y-1 mt-1">
+                            <li>Use Text-to-Video with full Scene 5 prompt</li>
+                            <li>This is an emotional payoff - generate multiple variations</li>
+                            <li>Look for the one with best "proud parent" energy</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Scene 6 -->
+                <div class="bg-white/5 rounded-lg p-4 border-l-4 border-purple-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-purple-500 text-white text-xs font-bold px-2 py-1 rounded">SCENE 6</span>
+                        <span class="font-medium">Logo & Tagline</span>
+                    </div>
+                    <div class="mt-3">
+                        <p class="text-gray-400 text-sm">Option A: Generate with Kling</p>
+                        <p class="text-gray-300 text-sm">Text-to-Video: "Shellcorp logo reveal, lobster emoji, golden particles, dark background"</p>
+                        <p class="text-gray-400 text-sm mt-2">Option B: Create in post (recommended)</p>
+                        <p class="text-gray-300 text-sm">Add logo + tagline as text overlay in CapCut/Premiere - more control over timing</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Post-Production -->
         <section class="card rounded-2xl p-8">
-            <h2 class="text-2xl font-bold mb-6">📋 Production Notes</h2>
+            <h2 class="text-2xl font-bold mb-6">🎞️ Post-Production Checklist</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <h3 class="font-bold text-lg mb-3">Kling Tips</h3>
-                    <ul class="space-y-2 text-gray-300">
-                        <li class="flex items-start gap-2">
-                            <span class="text-green-400">✓</span>
-                            <span>Use <strong>Image-to-Video</strong> with keyframes from existing video for character consistency</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-green-400">✓</span>
-                            <span>Max 10 sec per generation — use <strong>Video Extension</strong> to add 4-5 sec</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-green-400">✓</span>
-                            <span>Generate 2-3 variations per scene, pick best</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-green-400">✓</span>
-                            <span>Keep prompts simple and action-focused</span>
-                        </li>
-                    </ul>
+                    <h3 class="font-bold text-lg mb-3">Stitching Clips</h3>
+                    <ol class="space-y-2 text-gray-300 list-decimal list-inside">
+                        <li>Import all clips into CapCut or Premiere</li>
+                        <li>Arrange in order: 1 → 2 → 3 → 4A → 4B → 4C → 5 → 6</li>
+                        <li>Add crossfade transitions (0.3-0.5 sec)</li>
+                        <li>Trim any awkward starts/ends</li>
+                    </ol>
                 </div>
                 <div>
-                    <h3 class="font-bold text-lg mb-3">Post-Production</h3>
+                    <h3 class="font-bold text-lg mb-3">Audio & Text</h3>
                     <ul class="space-y-2 text-gray-300">
                         <li class="flex items-start gap-2">
-                            <span class="text-blue-400">→</span>
-                            <span>Stitch clips in CapCut or Premiere</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-blue-400">→</span>
+                            <span class="text-blue-400">🎵</span>
                             <span>Add upbeat/inspirational background music</span>
                         </li>
                         <li class="flex items-start gap-2">
-                            <span class="text-blue-400">→</span>
-                            <span>Text overlays for "ZERO" and tagline</span>
+                            <span class="text-blue-400">💬</span>
+                            <span>Text overlay: "You've done ZERO!" in Scene 2</span>
                         </li>
                         <li class="flex items-start gap-2">
-                            <span class="text-blue-400">→</span>
-                            <span>Sound effects for key moments</span>
+                            <span class="text-blue-400">✨</span>
+                            <span>End card: "Everyone starts at zero."</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-blue-400">🔊</span>
+                            <span>Optional: sound effects for key moments</span>
                         </li>
                     </ul>
                 </div>
             </div>
-            <div class="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                <p class="text-yellow-400 font-medium">💡 Pro Tip</p>
-                <p class="text-gray-300 mt-1">You already have Scenes 1→4A from the original Kling video (couch bum → construction worker). Use those frames as starting points for consistency!</p>
+            <div class="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <p class="text-green-400 font-medium">✅ Final Export</p>
+                <p class="text-gray-300 mt-1">Export as MP4, 1080p, 30fps. Target length: 30-45 seconds.</p>
             </div>
         </section>
     </main>
