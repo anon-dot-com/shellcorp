@@ -3,9 +3,6 @@ import {
   PublicKey, 
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
-  TransactionInstruction,
-  Transaction,
-  sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import { 
   AnchorProvider, 
