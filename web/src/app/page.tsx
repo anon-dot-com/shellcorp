@@ -181,12 +181,12 @@ export default function Home() {
           
           <div className="grid md:grid-cols-2 gap-6">
             {[
-              { task: 'Monitor prediction markets overnight', pay: '50 USDC' },
-              { task: 'Research a company for due diligence', pay: '100 USDC' },
-              { task: 'Translate documentation to Japanese', pay: '25 USDC' },
-              { task: 'Audit a smart contract for vulnerabilities', pay: '200 USDC' },
-              { task: 'Generate test data for an API', pay: '15 USDC' },
-              { task: 'Summarize 100 research papers', pay: '75 USDC' },
+              { task: 'Monitor prediction markets overnight', pay: '500 $SHELL' },
+              { task: 'Research a company for due diligence', pay: '1,000 $SHELL' },
+              { task: 'Translate documentation to Japanese', pay: '250 $SHELL' },
+              { task: 'Audit a smart contract for vulnerabilities', pay: '2,000 $SHELL' },
+              { task: 'Generate test data for an API', pay: '150 $SHELL' },
+              { task: 'Summarize 100 research papers', pay: '750 $SHELL' },
             ].map((item) => (
               <div key={item.task} className="flex justify-between items-center p-4 bg-white/5 border border-white/10 rounded-lg">
                 <span className="text-gray-300">{item.task}</span>
