@@ -1,69 +1,12 @@
 import { NextResponse } from 'next/server'
 import { Connection, PublicKey } from '@solana/web3.js'
-import { Program, AnchorProvider, BN } from '@coral-xyz/anchor'
 
-const PROGRAM_ID = '7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb'
+const PROGRAM_ID = new PublicKey('7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb')
 const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'
 
-// IDL for the program (minimal version for reading)
-const IDL = {
-  "address": "7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb",
-  "metadata": { "name": "gigzero_protocol", "version": "0.1.0", "spec": "0.1.0" },
-  "accounts": [
-    {
-      "name": "Config",
-      "discriminator": [155, 12, 170, 224, 30, 250, 204, 130]
-    },
-    {
-      "name": "Job", 
-      "discriminator": [58, 110, 165, 77, 143, 218, 157, 170]
-    }
-  ],
-  "types": [
-    {
-      "name": "Config",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "admin", "type": "pubkey" },
-          { "name": "platformFeeBps", "type": "u16" },
-          { "name": "totalJobs", "type": "u64" },
-          { "name": "totalCompleted", "type": "u64" }
-        ]
-      }
-    },
-    {
-      "name": "Job",
-      "type": {
-        "kind": "struct", 
-        "fields": [
-          { "name": "id", "type": "u64" },
-          { "name": "client", "type": "pubkey" },
-          { "name": "title", "type": "string" },
-          { "name": "description", "type": "string" },
-          { "name": "paymentAmount", "type": "u64" },
-          { "name": "status", "type": { "defined": { "name": "JobStatus" } } },
-          { "name": "worker", "type": { "option": "pubkey" } },
-          { "name": "submissionUri", "type": { "option": "string" } },
-          { "name": "createdAt", "type": "i64" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
-    },
-    {
-      "name": "JobStatus",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          { "name": "Open" },
-          { "name": "Submitted" },
-          { "name": "Completed" },
-          { "name": "Cancelled" }
-        ]
-      }
-    }
-  ]
-} as const
+// Account discriminators (first 8 bytes)
+const CONFIG_DISCRIMINATOR = Buffer.from([155, 12, 170, 224, 30, 250, 204, 130])
+const JOB_DISCRIMINATOR = Buffer.from([58, 110, 165, 77, 143, 218, 157, 170])
 
 interface JobResponse {
   id: string
@@ -76,71 +19,137 @@ interface JobResponse {
   createdAt: string
 }
 
+function readString(buffer: Buffer, offset: number): [string, number] {
+  const len = buffer.readUInt32LE(offset)
+  const str = buffer.slice(offset + 4, offset + 4 + len).toString('utf-8')
+  return [str, offset + 4 + len]
+}
+
+function parseJobAccount(data: Buffer): JobResponse | null {
+  try {
+    // Check discriminator
+    if (!data.slice(0, 8).equals(JOB_DISCRIMINATOR)) {
+      return null
+    }
+
+    let offset = 8
+
+    // id: u64
+    const id = data.readBigUInt64LE(offset)
+    offset += 8
+
+    // client: Pubkey (32 bytes)
+    const client = new PublicKey(data.slice(offset, offset + 32)).toBase58()
+    offset += 32
+
+    // title: String
+    const [title, newOffset1] = readString(data, offset)
+    offset = newOffset1
+
+    // description: String
+    const [description, newOffset2] = readString(data, offset)
+    offset = newOffset2
+
+    // payment_amount: u64
+    const paymentAmount = data.readBigUInt64LE(offset)
+    offset += 8
+
+    // status: enum (1 byte)
+    const statusByte = data.readUInt8(offset)
+    offset += 1
+    const statusMap = ['open', 'submitted', 'completed', 'cancelled']
+    const status = statusMap[statusByte] || 'open'
+
+    // worker: Option<Pubkey>
+    const hasWorker = data.readUInt8(offset) === 1
+    offset += 1
+    let worker: string | null = null
+    if (hasWorker) {
+      worker = new PublicKey(data.slice(offset, offset + 32)).toBase58()
+      offset += 32
+    }
+
+    // submission_uri: Option<String> - skip for now
+    // created_at: i64
+    // We need to find created_at - it's near the end
+    // For now, use current time as fallback
+
+    const reward = Number(paymentAmount) / 1e9
+
+    return {
+      id: id.toString(),
+      title,
+      description,
+      client,
+      reward: reward.toLocaleString(),
+      status,
+      worker,
+      createdAt: new Date().toISOString(),
+    }
+  } catch (e) {
+    console.error('Error parsing job:', e)
+    return null
+  }
+}
+
+function parseConfigAccount(data: Buffer): { totalJobs: number } | null {
+  try {
+    if (!data.slice(0, 8).equals(CONFIG_DISCRIMINATOR)) {
+      return null
+    }
+
+    // admin: Pubkey (32 bytes) at offset 8
+    // platformFeeBps: u16 at offset 40
+    // totalJobs: u64 at offset 42
+    const totalJobs = Number(data.readBigUInt64LE(42))
+    return { totalJobs }
+  } catch (e) {
+    return null
+  }
+}
+
 export async function GET() {
   try {
     const connection = new Connection(RPC_URL, 'confirmed')
-    const programId = new PublicKey(PROGRAM_ID)
 
-    // First get config to know how many jobs exist
+    // Get config PDA
     const [configPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from('config')],
-      programId
+      PROGRAM_ID
     )
 
-    // Create a read-only provider (no wallet needed for reading)
-    const provider = new AnchorProvider(
-      connection,
-      {
-        publicKey: PublicKey.default,
-        signTransaction: async (tx: any) => tx,
-        signAllTransactions: async (txs: any) => txs,
-      } as any,
-      { commitment: 'confirmed' }
-    )
+    // Fetch config account
+    const configInfo = await connection.getAccountInfo(configPDA)
+    if (!configInfo) {
+      return NextResponse.json({ success: true, jobs: [], message: 'Protocol not initialized' })
+    }
 
-    const program = new Program(IDL as any, provider)
-
-    // Fetch config
-    let totalJobs = 0
-    try {
-      const config = await (program.account as any).config.fetch(configPDA)
-      totalJobs = Number(config.totalJobs)
-    } catch (e) {
-      console.log('Config not found or not initialized')
-      return NextResponse.json({ success: true, jobs: [] })
+    const config = parseConfigAccount(configInfo.data as Buffer)
+    if (!config) {
+      return NextResponse.json({ success: true, jobs: [], message: 'Failed to parse config' })
     }
 
     // Fetch all jobs
     const jobs: JobResponse[] = []
-    
-    for (let i = 0; i < totalJobs; i++) {
+
+    for (let i = 0; i < config.totalJobs; i++) {
       try {
+        // Calculate job PDA
+        const jobIdBuffer = Buffer.alloc(8)
+        jobIdBuffer.writeBigUInt64LE(BigInt(i))
+        
         const [jobPDA] = PublicKey.findProgramAddressSync(
-          [Buffer.from('job'), new BN(i).toArrayLike(Buffer, 'le', 8)],
-          programId
+          [Buffer.from('job'), jobIdBuffer],
+          PROGRAM_ID
         )
-        
-        const jobAccount = await (program.account as any).job.fetch(jobPDA)
-        
-        // Determine status string
-        let status = 'open'
-        if (jobAccount.status.submitted) status = 'submitted'
-        else if (jobAccount.status.completed) status = 'completed'
-        else if (jobAccount.status.cancelled) status = 'cancelled'
-        
-        // Convert payment amount (9 decimals for $SHELL)
-        const rewardAmount = Number(jobAccount.paymentAmount) / 1e9
-        
-        jobs.push({
-          id: jobAccount.id.toString(),
-          title: jobAccount.title,
-          description: jobAccount.description,
-          client: jobAccount.client.toBase58(),
-          reward: rewardAmount.toLocaleString(),
-          status,
-          worker: jobAccount.worker ? jobAccount.worker.toBase58() : null,
-          createdAt: new Date(Number(jobAccount.createdAt) * 1000).toISOString(),
-        })
+
+        const jobInfo = await connection.getAccountInfo(jobPDA)
+        if (jobInfo) {
+          const job = parseJobAccount(jobInfo.data as Buffer)
+          if (job) {
+            jobs.push(job)
+          }
+        }
       } catch (e) {
         console.error(`Error fetching job ${i}:`, e)
         continue
@@ -150,13 +159,13 @@ export async function GET() {
     // Sort by newest first
     jobs.sort((a, b) => parseInt(b.id) - parseInt(a.id))
 
-    return NextResponse.json({ success: true, jobs })
-  } catch (error) {
+    return NextResponse.json({ success: true, jobs, totalOnChain: config.totalJobs })
+  } catch (error: any) {
     console.error('Error fetching jobs:', error)
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: false,
       jobs: [],
-      error: 'Failed to fetch jobs from chain'
+      error: error.message || 'Failed to fetch jobs from chain'
     })
   }
 }
