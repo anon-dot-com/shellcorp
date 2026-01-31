@@ -1,19 +1,84 @@
 import { NextResponse } from 'next/server'
 import { Connection, PublicKey } from '@solana/web3.js'
+import { Program, AnchorProvider, BN } from '@coral-xyz/anchor'
 
 const PROGRAM_ID = '7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb'
 const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'
 
-// Job status enum matching on-chain
-const JOB_STATUS = ['open', 'submitted', 'completed', 'cancelled'] as const
+// IDL for the program (minimal version for reading)
+const IDL = {
+  "address": "7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb",
+  "metadata": { "name": "gigzero_protocol", "version": "0.1.0", "spec": "0.1.0" },
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [155, 12, 170, 224, 30, 250, 204, 130]
+    },
+    {
+      "name": "Job", 
+      "discriminator": [58, 110, 165, 77, 143, 218, 157, 170]
+    }
+  ],
+  "types": [
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "admin", "type": "pubkey" },
+          { "name": "platformFeeBps", "type": "u16" },
+          { "name": "totalJobs", "type": "u64" },
+          { "name": "totalCompleted", "type": "u64" }
+        ]
+      }
+    },
+    {
+      "name": "Job",
+      "type": {
+        "kind": "struct", 
+        "fields": [
+          { "name": "id", "type": "u64" },
+          { "name": "client", "type": "pubkey" },
+          { "name": "title", "type": "string" },
+          { "name": "description", "type": "string" },
+          { "name": "paymentAmount", "type": "u64" },
+          { "name": "status", "type": { "defined": { "name": "JobStatus" } } },
+          { "name": "worker", "type": { "option": "pubkey" } },
+          { "name": "submissionUri", "type": { "option": "string" } },
+          { "name": "createdAt", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "JobStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Open" },
+          { "name": "Submitted" },
+          { "name": "Completed" },
+          { "name": "Cancelled" }
+        ]
+      }
+    }
+  ]
+} as const
 
-interface Job {
+const JOB_STATUS_MAP: Record<string, string> = {
+  'open': 'open',
+  'submitted': 'submitted', 
+  'completed': 'completed',
+  'cancelled': 'cancelled'
+}
+
+interface JobResponse {
   id: string
   title: string
   description: string
   client: string
   reward: string
-  status: typeof JOB_STATUS[number]
+  status: string
   worker: string | null
   createdAt: string
 }
@@ -23,34 +88,68 @@ export async function GET() {
     const connection = new Connection(RPC_URL, 'confirmed')
     const programId = new PublicKey(PROGRAM_ID)
 
-    // Get all program accounts (jobs are stored as PDAs)
-    const accounts = await connection.getProgramAccounts(programId, {
-      filters: [
-        // Filter for job accounts by size (jobs have a specific size)
-        // Adjust this based on actual job account size
-        { dataSize: 500 }, // approximate, may need adjustment
-      ],
-    })
+    // First get config to know how many jobs exist
+    const [configPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from('config')],
+      programId
+    )
 
-    const jobs: Job[] = []
+    // Create a read-only provider (no wallet needed for reading)
+    const provider = new AnchorProvider(
+      connection,
+      {
+        publicKey: PublicKey.default,
+        signTransaction: async (tx: any) => tx,
+        signAllTransactions: async (txs: any) => txs,
+      } as any,
+      { commitment: 'confirmed' }
+    )
 
-    for (const account of accounts) {
+    const program = new Program(IDL as any, provider)
+
+    // Fetch config
+    let totalJobs = 0
+    try {
+      const config = await (program.account as any).config.fetch(configPDA)
+      totalJobs = Number(config.totalJobs)
+    } catch (e) {
+      console.log('Config not found or not initialized')
+      return NextResponse.json({ success: true, jobs: [] })
+    }
+
+    // Fetch all jobs
+    const jobs: JobResponse[] = []
+    
+    for (let i = 0; i < totalJobs; i++) {
       try {
-        // Decode job data from account
-        // This is a simplified decoder - in production use Anchor's IDL decoder
-        const data = account.account.data
+        const [jobPDA] = PublicKey.findProgramAddressSync(
+          [Buffer.from('job'), new BN(i).toArrayLike(Buffer, 'le', 8)],
+          programId
+        )
         
-        // Skip if too small to be a job
-        if (data.length < 100) continue
-
-        // Parse the job data (this is a simplified version)
-        // In production, use proper Anchor deserialization
-        const job = parseJobAccount(account.pubkey.toBase58(), data)
-        if (job) {
-          jobs.push(job)
-        }
+        const jobAccount = await (program.account as any).job.fetch(jobPDA)
+        
+        // Determine status string
+        let status = 'open'
+        if (jobAccount.status.submitted) status = 'submitted'
+        else if (jobAccount.status.completed) status = 'completed'
+        else if (jobAccount.status.cancelled) status = 'cancelled'
+        
+        // Convert payment amount (9 decimals for $SHELL)
+        const rewardAmount = Number(jobAccount.paymentAmount) / 1e9
+        
+        jobs.push({
+          id: jobAccount.id.toString(),
+          title: jobAccount.title,
+          description: jobAccount.description,
+          client: jobAccount.client.toBase58(),
+          reward: rewardAmount.toLocaleString(),
+          status,
+          worker: jobAccount.worker ? jobAccount.worker.toBase58() : null,
+          createdAt: new Date(Number(jobAccount.createdAt) * 1000).toISOString(),
+        })
       } catch (e) {
-        // Skip accounts that aren't jobs
+        console.error(`Error fetching job ${i}:`, e)
         continue
       }
     }
@@ -61,38 +160,10 @@ export async function GET() {
     return NextResponse.json({ success: true, jobs })
   } catch (error) {
     console.error('Error fetching jobs:', error)
-    
-    // Return empty array for now - no jobs posted yet
     return NextResponse.json({ 
       success: true, 
       jobs: [],
-      message: 'No jobs found or unable to fetch from chain'
+      error: 'Failed to fetch jobs from chain'
     })
-  }
-}
-
-function parseJobAccount(pubkey: string, data: Buffer): Job | null {
-  try {
-    // Anchor account discriminator is first 8 bytes
-    // Then comes the actual job data
-    
-    // This is a placeholder parser - actual parsing depends on IDL
-    // For now, return null since we haven't posted any jobs yet
-    
-    // When jobs exist, we'd parse:
-    // - id (u64)
-    // - client (Pubkey - 32 bytes)
-    // - title (String - length prefix + bytes)
-    // - description (String)
-    // - payment_amount (u64)
-    // - status (enum)
-    // - worker (Option<Pubkey>)
-    // - submission_uri (Option<String>)
-    // - created_at (i64)
-    // - bump (u8)
-    
-    return null
-  } catch (e) {
-    return null
   }
 }
