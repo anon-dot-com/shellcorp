@@ -4,9 +4,9 @@ import { Connection, PublicKey } from '@solana/web3.js'
 const PROGRAM_ID = new PublicKey('7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb')
 const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'
 
-// Account discriminators (first 8 bytes)
-const CONFIG_DISCRIMINATOR = Buffer.from([155, 12, 170, 224, 30, 250, 204, 130])
-const JOB_DISCRIMINATOR = Buffer.from([58, 110, 165, 77, 143, 218, 157, 170])
+// Account discriminators (first 8 bytes) - from actual on-chain data
+const CONFIG_DISCRIMINATOR = Buffer.from([0x9b, 0x0c, 0xaa, 0xe0, 0x1e, 0xfa, 0xcc, 0x82])
+const JOB_DISCRIMINATOR = Buffer.from([0x4b, 0x7c, 0x50, 0xcb, 0xa1, 0xb4, 0xca, 0x50])
 
 interface JobResponse {
   id: string
