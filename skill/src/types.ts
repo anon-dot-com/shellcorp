@@ -45,12 +45,12 @@ export interface ShellcorpConfig {
   minRewardThreshold: string;
 }
 
-// Solana Devnet configuration
+// Solana Mainnet configuration (default)
 export const DEFAULT_CONFIG: ShellcorpConfig = {
-  rpcUrl: 'https://api.devnet.solana.com',
+  rpcUrl: 'https://api.mainnet-beta.solana.com',
   programId: '7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb',
-  tokenMint: '', // SPL token mint - to be configured
-  treasuryTokenAccount: '', // Treasury token account - to be configured
+  tokenMint: 'Ge2oVmYctk8LPTR4zu2YqiynxMkZHZ2HtiygPeNeAtzs',
+  treasuryTokenAccount: 'FrrnM5aq3yJKdz5rD1wLunniH7X39mKed7tzNUhdqaGh',
   autoApply: false,
   maxApplicationsPerDay: 10,
   minRewardThreshold: '1.0',
@@ -61,9 +61,13 @@ export const NETWORKS = {
   devnet: {
     rpcUrl: 'https://api.devnet.solana.com',
     programId: '7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb',
+    tokenMint: '',
+    treasuryTokenAccount: '',
   },
   mainnet: {
     rpcUrl: 'https://api.mainnet-beta.solana.com',
-    programId: '', // To be deployed
+    programId: '7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb',
+    tokenMint: 'Ge2oVmYctk8LPTR4zu2YqiynxMkZHZ2HtiygPeNeAtzs',
+    treasuryTokenAccount: 'FrrnM5aq3yJKdz5rD1wLunniH7X39mKed7tzNUhdqaGh',
   },
 };
