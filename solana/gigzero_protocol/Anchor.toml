@@ -11,6 +11,9 @@ gigzero_protocol = "7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb"
 [programs.devnet]
 gigzero_protocol = "7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb"
 
+[programs.mainnet]
+gigzero_protocol = "7UuVt1PArinCvBMqU2SK47wejMBZmXr2YNWvxzPPkpHb"
+
 [registry]
 url = "https://api.apr.dev"
 
